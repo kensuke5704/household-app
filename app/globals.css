@@ -49,3 +49,55 @@ textarea {
   border-color: #8a6a3f;
   box-shadow: 0 0 0 3px rgba(138, 106, 63, 0.12);
 }
+
+@media (max-width: 767px) {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: #f7f3eb;
+  }
+
+  .input-desktop {
+    min-height: 44px;
+    border-radius: 10px;
+    font-size: 16px;
+  }
+
+  textarea.input-desktop {
+    font-size: 15px;
+  }
+}
+
+.mobile-section-nav {
+  position: sticky;
+  top: 92px;
+  z-index: 15;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 6px;
+  border: 1px solid #e6dcc8;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 24px rgba(36, 25, 15, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.mobile-section-nav a {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: #5b4630;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.mobile-section-nav a:active {
+  background: #f3eadb;
+}
