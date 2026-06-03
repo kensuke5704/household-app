@@ -50,28 +50,28 @@ export default function Page() {
   return (
     <LoginGate>
       <main className="min-h-screen bg-[#f7f3eb] text-[#1f2933]">
-      <div className="mx-auto max-w-[1440px] px-8 py-8">
-        <header className="mb-6 rounded-2xl border border-[#e6dcc8] bg-white px-6 py-5 shadow-sm">
+      <div className="mx-auto max-w-[1440px] px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+        <header className="mb-4 rounded-2xl border border-[#e6dcc8] bg-white px-4 py-4 shadow-sm sm:mb-6 sm:px-6 sm:py-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-xs font-bold tracking-[0.2em] text-[#8a6a3f]">HOUSEHOLD BOOK</p>
-              <h1 className="mt-1 text-3xl font-bold text-[#24190f]">家計簿</h1>
+              <h1 className="mt-1 text-2xl font-bold text-[#24190f] sm:text-3xl">家計簿</h1>
               <p className="mt-1 text-sm text-[#6b7280]">Excelの入力・履歴・予算集計をPC画面向けに整理しています。</p>
             </div>
-            <div className="flex items-end gap-3">
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-end">
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-[#6b7280]">表示月</span>
                 <input
                   type="month"
                   value={month}
                   onChange={(e) => setMonth(e.target.value)}
-                  className="h-11 rounded-lg border border-[#d7c7aa] bg-white px-3 text-sm font-bold text-[#24190f]"
+                  className="h-11 w-full rounded-lg border border-[#d7c7aa] bg-white px-3 text-sm font-bold text-[#24190f] sm:w-auto"
                 />
               </label>
               <button
                 type="button"
                 onClick={reload}
-                className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#d7c7aa] bg-[#fbfaf7] px-4 text-sm font-bold text-[#5b4630] hover:bg-[#f2eadc]"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#d7c7aa] bg-[#fbfaf7] px-4 text-sm font-bold text-[#5b4630] hover:bg-[#f2eadc] sm:w-auto"
               >
                 <RefreshCw size={16} />
                 更新
@@ -82,7 +82,7 @@ export default function Page() {
 
         {message && <div className="mb-5 rounded-lg border border-[#f2b8b5] bg-[#fff4f2] px-4 py-3 text-sm font-bold text-[#b42318]">{message}</div>}
 
-        <section className="mb-6 grid grid-cols-4 gap-4">
+        <section className="mb-4 grid grid-cols-2 gap-3 sm:mb-6 lg:grid-cols-4 lg:gap-4">
           <KpiCard label="収入" value={income} tone="green" />
           <KpiCard label="支出" value={expense} tone="red" />
           <KpiCard label="残高" value={balance} tone={balance < 0 ? "red" : "dark"} />
@@ -92,15 +92,15 @@ export default function Page() {
         {loading ? (
           <div className="rounded-2xl border border-[#e6dcc8] bg-white p-10 text-center font-bold text-[#6b7280]">読み込み中...</div>
         ) : (
-          <div className="grid grid-cols-12 gap-5">
-            <aside className="col-span-4 space-y-5">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
+            <aside className="space-y-4 lg:col-span-4 lg:space-y-5">
               <InputPanel month={month} onAdded={reload} setMessage={setMessage} />
               <BudgetPanel month={month} budgets={budgets} onSaved={reload} setMessage={setMessage} />
             </aside>
 
-            <section className="col-span-8 space-y-5">
+            <section className="space-y-4 lg:col-span-8 lg:space-y-5">
               <HistoryTable transactions={transactions} onDeleted={reload} setMessage={setMessage} />
-              <div className="grid grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-5">
                 <SummaryTable title="支出集計" rows={expenseRows} type="expense" />
                 <SummaryTable title="収入集計" rows={incomeRows} type="income" />
               </div>
@@ -116,9 +116,9 @@ export default function Page() {
 function KpiCard({ label, value, tone }: { label: string; value: number | string; tone: "green" | "red" | "dark" }) {
   const textClass = tone === "green" ? "text-[#047857]" : tone === "red" ? "text-[#b42318]" : "text-[#24190f]";
   return (
-    <div className="rounded-2xl border border-[#e6dcc8] bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-[#e6dcc8] bg-white p-4 shadow-sm sm:p-5">
       <p className="text-sm font-bold text-[#6b7280]">{label}</p>
-      <p className={`mt-2 text-3xl font-bold ${textClass}`}>{typeof value === "number" ? yen(value) : value}</p>
+      <p className={`mt-2 text-2xl font-bold sm:text-3xl ${textClass}`}>{typeof value === "number" ? yen(value) : value}</p>
     </div>
   );
 }
@@ -175,7 +175,7 @@ function InputPanel({ month, onAdded, setMessage }: { month: string; onAdded: ()
   }
 
   return (
-    <div className="rounded-2xl border border-[#e6dcc8] bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-[#e6dcc8] bg-white p-4 shadow-sm sm:p-5">
       <div className="mb-4 flex items-center gap-2">
         <Plus size={18} className="text-[#8a6a3f]" />
         <h2 className="text-lg font-bold text-[#24190f]">入力</h2>
@@ -186,7 +186,7 @@ function InputPanel({ month, onAdded, setMessage }: { month: string; onAdded: ()
           <button type="button" onClick={() => setType("income")} className={`rounded-md py-2 text-sm font-bold ${type === "income" ? "bg-white text-[#047857] shadow-sm" : "text-[#6b7280]"}`}>収入</button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="日付"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input-desktop" /></Field>
           <Field label="金額"><input inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} placeholder="1100" className="input-desktop text-right" /></Field>
         </div>
@@ -227,7 +227,7 @@ function HistoryTable({ transactions, onDeleted, setMessage }: { transactions: H
         </div>
         <p className="text-sm font-bold text-[#6b7280]">{transactions.length}件</p>
       </div>
-      <div className="max-h-[520px] overflow-auto">
+      <div className="hidden max-h-[520px] overflow-auto md:block">
         <table className="w-full border-collapse text-sm">
           <thead className="sticky top-0 bg-[#fbfaf7] text-left text-xs font-bold text-[#6b7280]">
             <tr>
@@ -259,6 +259,31 @@ function HistoryTable({ transactions, onDeleted, setMessage }: { transactions: H
           </tbody>
         </table>
       </div>
+      <div className="space-y-3 p-4 md:hidden">
+        {transactions.length === 0 ? (
+          <div className="rounded-xl bg-[#fbfaf7] px-4 py-8 text-center text-sm font-bold text-[#6b7280]">この月の記録はまだありません。</div>
+        ) : (
+          transactions.map((t) => (
+            <div key={t.id} className="rounded-xl border border-[#f0e7d8] bg-[#fbfaf7] p-4">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold text-[#6b7280]">{t.date}</p>
+                  <p className="mt-1 text-base font-bold text-[#24190f]">{t.subcategory || t.category}</p>
+                  <p className="mt-1 text-xs font-bold text-[#6b7280]">{t.category}</p>
+                </div>
+                <div className={`text-right text-lg font-bold ${t.type === "income" ? "text-[#047857]" : "text-[#b42318]"}`}>
+                  {t.type === "income" ? "+" : "-"}{yen(t.amount)}
+                </div>
+              </div>
+              {t.memo && <p className="mb-3 rounded-lg bg-white px-3 py-2 text-sm text-[#4b5563]">{t.memo}</p>}
+              <div className="flex items-center justify-between">
+                <span className={`rounded-full px-2 py-1 text-xs font-bold ${t.type === "income" ? "bg-[#e8f7ef] text-[#047857]" : "bg-[#fff0ed] text-[#b42318]"}`}>{t.type === "income" ? "収入" : "支出"}</span>
+                <button type="button" onClick={() => handleDelete(t.id)} className="inline-flex items-center gap-1 rounded-md border border-[#ead8d4] bg-white px-3 py-2 text-xs font-bold text-[#b42318] hover:bg-[#fff0ed]"><Trash2 size={14} />削除</button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }
@@ -274,7 +299,7 @@ function SummaryTable({ title, rows, type }: { title: string; rows: SummaryRow[]
         <BarChart3 size={18} className="text-[#8a6a3f]" />
         <h2 className="text-lg font-bold text-[#24190f]">{title}</h2>
       </div>
-      <div className="overflow-auto">
+      <div className="hidden overflow-auto md:block">
         <table className="w-full text-sm">
           <thead className="bg-[#fbfaf7] text-left text-xs font-bold text-[#6b7280]">
             <tr>
@@ -304,6 +329,26 @@ function SummaryTable({ title, rows, type }: { title: string; rows: SummaryRow[]
           </tfoot>
         </table>
       </div>
+      <div className="space-y-2 p-4 md:hidden">
+        {rows.map((row) => (
+          <div key={row.category} className="rounded-xl border border-[#f0e7d8] bg-[#fbfaf7] p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="font-bold text-[#24190f]">{row.category}</p>
+              <p className={`font-bold ${row.diff < 0 ? "text-[#b42318]" : "text-[#047857]"}`}>{yen(row.diff)}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="rounded-lg bg-white p-2"><p className="text-xs font-bold text-[#6b7280]">予算</p><p className="font-bold text-[#24190f]">{yen(row.budget)}</p></div>
+              <div className="rounded-lg bg-white p-2"><p className="text-xs font-bold text-[#6b7280]">実績</p><p className="font-bold text-[#24190f]">{yen(row.actual)}</p></div>
+            </div>
+          </div>
+        ))}
+        <div className="rounded-xl border-2 border-[#e6dcc8] bg-white p-4">
+          <div className="flex items-center justify-between font-bold">
+            <span>合計差額</span>
+            <span className={totalDiff < 0 ? "text-[#b42318]" : "text-[#047857]"}>{yen(totalDiff)}</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -327,14 +372,14 @@ function BudgetPanel({ month, budgets, onSaved, setMessage }: { month: string; b
   }
 
   return (
-    <div className="rounded-2xl border border-[#e6dcc8] bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-[#e6dcc8] bg-white p-4 shadow-sm sm:p-5">
       <div className="mb-4 flex items-center gap-2">
         <WalletCards size={18} className="text-[#8a6a3f]" />
         <h2 className="text-lg font-bold text-[#24190f]">月別予算</h2>
       </div>
       <div className="max-h-[360px] space-y-2 overflow-auto pr-1">
         {budgets.map((budget) => (
-          <label key={budget.category} className="grid grid-cols-[1fr_130px] items-center gap-3 rounded-lg border border-[#f0e7d8] bg-[#fbfaf7] px-3 py-2">
+          <label key={budget.category} className="grid grid-cols-[1fr_120px] items-center gap-3 rounded-lg border border-[#f0e7d8] bg-[#fbfaf7] px-3 py-2 sm:grid-cols-[1fr_130px]">
             <span className="text-sm font-bold text-[#24190f]">{budget.category}</span>
             <input inputMode="numeric" value={drafts[budget.category] ?? ""} onChange={(e) => setDrafts({ ...drafts, [budget.category]: e.target.value.replace(/[^0-9]/g, "") })} className="h-9 rounded-md border border-[#d7c7aa] bg-white px-2 text-right text-sm font-bold text-[#24190f]" />
           </label>
