@@ -42,6 +42,7 @@ type TemplateDraft = {
   category: string;
   subcategory: string;
   amount: string;
+  enabled: boolean;
 };
 
 const TEMPLATE_STORAGE_KEY = "household.recurringTemplates.v1";
@@ -52,33 +53,13 @@ const frequentSubcategories: Record<TransactionType, string[]> = {
     "コンビニ",
     "外食",
     "カフェ",
-    "電車",
+    "交通費",
     "日用品",
     "携帯料金",
     "サブスク",
   ],
   income: ["給与", "副収入", "立替返金", "取崩し"],
 };
-
-const frequentSubcategoriesByCategory: Record<string, string[]> = {
-  食費: ["スーパー", "コンビニ", "外食", "カフェ", "昼食", "夕食"],
-  日用品: ["ドラッグストア", "洗剤", "消耗品", "雑貨"],
-  交通費: ["電車", "バス", "タクシー", "ガソリン"],
-  通信費: ["携帯料金", "インターネット", "サブスク"],
-  光熱費: ["電気", "ガス", "水道"],
-  住居費: ["家賃", "管理費", "更新料"],
-  娯楽費: ["映画", "本", "旅行", "イベント"],
-  医療費: ["病院", "薬", "歯科"],
-  被服費: ["服", "靴", "クリーニング"],
-  教育費: ["書籍", "講座", "教材"],
-  給与: ["給与", "賞与"],
-  副収入: ["副業", "配当", "売却益"],
-  その他収入: ["立替返金", "取崩し", "臨時収入"],
-};
-
-function getFrequentSubcategories(type: TransactionType, category: string) {
-  return frequentSubcategoriesByCategory[category] ?? frequentSubcategories[type];
-}
 
 function formatNumber(value: number | string) {
   const digits = String(value).replace(/[^0-9]/g, "");
@@ -105,6 +86,7 @@ function readTemplateDrafts(): TemplateDraft[] {
       category: item.category || "その他(支出)",
       subcategory: item.subcategory || "",
       amount: toDigits(item.amount || ""),
+      enabled: item.enabled ?? true,
     }));
   } catch {
     return makeDefaultTemplates();
@@ -123,6 +105,7 @@ function makeDefaultTemplates(): TemplateDraft[] {
     category: item.category,
     subcategory: item.subcategory,
     amount: String(item.amount),
+    enabled: true,
   }));
 }
 
@@ -341,7 +324,6 @@ function InputPanel({
 
   useEffect(() => {
     setCategory(type === "income" ? "給与" : "食費");
-    setSubcategory("");
   }, [type]);
 
   useEffect(() => {
@@ -385,7 +367,7 @@ function InputPanel({
         ...item,
         amount: toDigits(item.amount),
       }))
-      .filter((item) => item.category && item.subcategory && Number(item.amount) > 0);
+      .filter((item) => item.enabled && item.category && item.subcategory && Number(item.amount) > 0);
 
     if (activeTemplates.length === 0) {
       setMessage("追加できる固定費テンプレートがありません");
@@ -425,12 +407,34 @@ function InputPanel({
         category: "その他(支出)",
         subcategory: "",
         amount: "",
+        enabled: true,
       },
     ]);
   }
 
   function deleteTemplateRow(id: string) {
     setTemplates((current) => current.filter((item) => item.id !== id));
+  }
+
+  function moveTemplateRow(id: string, direction: -1 | 1) {
+    setTemplates((current) => {
+      const index = current.findIndex((item) => item.id === id);
+      const nextIndex = index + direction;
+
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) {
+        return current;
+      }
+
+      const next = [...current];
+      const [target] = next.splice(index, 1);
+      next.splice(nextIndex, 0, target);
+      return next;
+    });
+  }
+
+  function resetTemplates() {
+    setTemplates(makeDefaultTemplates());
+    setMessage("固定費テンプレートを初期状態に戻しました");
   }
 
   return (
@@ -488,10 +492,7 @@ function InputPanel({
         <Field label="大分類">
           <select
             value={category}
-            onChange={(e) => {
-              setCategory(e.target.value);
-              setSubcategory("");
-            }}
+            onChange={(e) => setCategory(e.target.value)}
             className="input-desktop"
           >
             {categories.map((c) => (
@@ -510,24 +511,16 @@ function InputPanel({
             className="input-desktop"
           />
           <div className="mt-2 flex flex-wrap gap-2">
-            {getFrequentSubcategories(type, category).map((item) => {
-              const active = subcategory === item;
-
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setSubcategory(item)}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-bold active:bg-[#f3eadb] ${
-                    active
-                      ? "border-[#8a6a3f] bg-[#f3eadb] text-[#24190f]"
-                      : "border-[#e6dcc8] bg-[#fbfaf7] text-[#5b4630]"
-                  }`}
-                >
-                  {item}
-                </button>
-              );
-            })}
+            {frequentSubcategories[type].map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setSubcategory(item)}
+                className="rounded-full border border-[#e6dcc8] bg-[#fbfaf7] px-3 py-1.5 text-xs font-bold text-[#5b4630] active:bg-[#f3eadb]"
+              >
+                {item}
+              </button>
+            ))}
           </div>
         </Field>
 
@@ -544,16 +537,25 @@ function InputPanel({
           <div>
             <h3 className="text-sm font-black text-[#24190f]">固定費テンプレート</h3>
             <p className="mt-1 text-xs font-bold text-[#6b7280]">
-              金額・分類・項目名を編集できます。
+              使う項目だけONにして、並び順も変更できます。
             </p>
           </div>
-          <button
-            type="button"
-            onClick={addTemplateRow}
-            className="shrink-0 rounded-lg border border-[#d7c7aa] bg-white px-3 py-2 text-xs font-black text-[#5b4630]"
-          >
-            追加
-          </button>
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={resetTemplates}
+              className="rounded-lg border border-[#d7c7aa] bg-white px-3 py-2 text-xs font-black text-[#5b4630]"
+            >
+              初期化
+            </button>
+            <button
+              type="button"
+              onClick={addTemplateRow}
+              className="rounded-lg border border-[#d7c7aa] bg-white px-3 py-2 text-xs font-black text-[#5b4630]"
+            >
+              追加
+            </button>
+          </div>
         </div>
 
         <div className="space-y-3">
@@ -564,8 +566,42 @@ function InputPanel({
             return (
               <div
                 key={template.id}
-                className="rounded-xl border border-[#e6dcc8] bg-white p-3"
+                className={`rounded-xl border p-3 ${
+                  template.enabled
+                    ? "border-[#e6dcc8] bg-white"
+                    : "border-[#eee4d2] bg-[#f5efe5] opacity-70"
+                }`}
               >
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => updateTemplate(template.id, { enabled: !template.enabled })}
+                    className={`rounded-full px-3 py-1.5 text-xs font-black ${
+                      template.enabled
+                        ? "bg-[#e8f7ef] text-[#047857]"
+                        : "bg-white text-[#6b7280]"
+                    }`}
+                  >
+                    {template.enabled ? "ON" : "OFF"}
+                  </button>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => moveTemplateRow(template.id, -1)}
+                      className="rounded-md border border-[#e6dcc8] bg-white px-2 py-1 text-xs font-black text-[#5b4630]"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveTemplateRow(template.id, 1)}
+                      className="rounded-md border border-[#e6dcc8] bg-white px-2 py-1 text-xs font-black text-[#5b4630]"
+                    >
+                      ↓
+                    </button>
+                  </div>
+                </div>
+
                 <div className="mb-2 grid grid-cols-2 gap-2">
                   <select
                     value={template.type}
@@ -631,7 +667,7 @@ function InputPanel({
           onClick={addFixedCosts}
           className="mt-3 w-full rounded-xl border border-[#d7c7aa] bg-white py-3 text-sm font-black text-[#5b4630] active:bg-[#f3eadb]"
         >
-          固定費テンプレートを追加
+          ONの固定費テンプレートを追加
         </button>
       </div>
     </div>
@@ -811,10 +847,6 @@ function SummaryTable({
   const diffLabel = type === "expense" ? "残り" : "差額";
   const totalLabel = type === "expense" ? "合計残り" : "合計差額";
 
-  function displayDiff(value: number) {
-    return type === "expense" ? `残り ${yen(value)}` : yen(value);
-  }
-
   return (
     <div className="rounded-2xl border border-[#e6dcc8] bg-white shadow-sm">
       <div className="flex items-center gap-2 border-b border-[#eee4d2] px-4 py-3 sm:px-5 sm:py-4">
@@ -845,7 +877,7 @@ function SummaryTable({
                     row.diff < 0 ? "text-[#b42318]" : "text-[#047857]"
                   }`}
                 >
-                  {displayDiff(row.diff)}
+                  {yen(row.diff)}
                 </td>
               </tr>
             ))}
@@ -860,7 +892,7 @@ function SummaryTable({
                   totalDiff < 0 ? "text-[#b42318]" : "text-[#047857]"
                 }`}
               >
-                {displayDiff(totalDiff)}
+                {yen(totalDiff)}
               </td>
             </tr>
           </tfoot>
@@ -879,7 +911,7 @@ function SummaryTable({
                     row.diff < 0 ? "text-[#b42318]" : "text-[#047857]"
                   }`}
                 >
-                  {displayDiff(row.diff)}
+                  {yen(row.diff)}
                 </p>
               </div>
             </div>
@@ -900,7 +932,7 @@ function SummaryTable({
           <div className="flex items-center justify-between font-black">
             <span>{totalLabel}</span>
             <span className={totalDiff < 0 ? "text-[#b42318]" : "text-[#047857]"}>
-              {displayDiff(totalDiff)}
+              {yen(totalDiff)}
             </span>
           </div>
         </div>
