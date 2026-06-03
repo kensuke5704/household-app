@@ -109,6 +109,29 @@ function makeDefaultTemplates(): TemplateDraft[] {
   }));
 }
 
+
+function estimateMonthEndExpense(expense: number, month: string) {
+  const [yearText, monthText] = month.split("-");
+  const year = Number(yearText);
+  const monthIndex = Number(monthText) - 1;
+
+  if (!Number.isFinite(year) || !Number.isFinite(monthIndex)) return expense;
+
+  const today = new Date();
+  const monthStart = new Date(year, monthIndex, 1);
+  const monthEnd = new Date(year, monthIndex + 1, 0);
+  const totalDays = monthEnd.getDate();
+
+  let elapsedDays = totalDays;
+  if (today >= monthStart && today <= monthEnd) {
+    elapsedDays = today.getDate();
+  } else if (today < monthStart) {
+    elapsedDays = 1;
+  }
+
+  return Math.round((expense / Math.max(elapsedDays, 1)) * totalDays);
+}
+
 export default function Page() {
   const [month, setMonth] = useState(currentMonthString());
   const [transactions, setTransactions] = useState<HouseholdTransaction[]>([]);
@@ -177,6 +200,16 @@ export default function Page() {
     () => makeSummaryRows(transactions, budgets, "expense"),
     [transactions, budgets]
   );
+  const expenseBudget = useMemo(
+    () => expenseRows.reduce((sum, row) => sum + row.budget, 0),
+    [expenseRows]
+  );
+  const expenseRemaining = expenseBudget - expense;
+  const expenseUsageRate = expenseBudget > 0 ? Math.round((expense / expenseBudget) * 100) : 0;
+  const projectedExpense = useMemo(
+    () => estimateMonthEndExpense(expense, month),
+    [expense, month]
+  );
 
   return (
     <LoginGate>
@@ -239,6 +272,14 @@ export default function Page() {
                 <KpiCard label="残高" value={balance} tone="dark" />
               </section>
 
+              <MonthlyInsight
+                budget={expenseBudget}
+                expense={expense}
+                remaining={expenseRemaining}
+                usageRate={expenseUsageRate}
+                projectedExpense={projectedExpense}
+              />
+
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
                 <div id="input" className="space-y-4 scroll-mt-4">
                   <InputPanel
@@ -300,6 +341,89 @@ function KpiCard({
       <p className={`kpi-value mt-2 text-2xl font-black ${textClass}`}>
         {typeof value === "number" ? yen(value) : value}
       </p>
+    </div>
+  );
+}
+
+
+function MonthlyInsight({
+  budget,
+  expense,
+  remaining,
+  usageRate,
+  projectedExpense,
+}: {
+  budget: number;
+  expense: number;
+  remaining: number;
+  usageRate: number;
+  projectedExpense: number;
+}) {
+  const hasBudget = budget > 0;
+  const projectedRemaining = budget - projectedExpense;
+  const barWidth = hasBudget ? Math.min(usageRate, 100) : 0;
+
+  return (
+    <section className="mb-4 rounded-2xl border border-[#e6dcc8] bg-white p-4 shadow-sm sm:p-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-black tracking-[0.2em] text-[#8a6a3f]">MONTHLY CHECK</p>
+          <h2 className="mt-1 text-lg font-black text-[#24190f]">今月の支出状況</h2>
+        </div>
+        <p
+          className={`rounded-full px-3 py-1 text-xs font-black ${
+            remaining < 0 ? "bg-[#fff0ed] text-[#b42318]" : "bg-[#e8f7ef] text-[#047857]"
+          }`}
+        >
+          {hasBudget ? `使用率 ${usageRate}%` : "予算未設定"}
+        </p>
+      </div>
+
+      <div className="mb-4 h-3 overflow-hidden rounded-full bg-[#f3eadb]">
+        <div
+          className={`h-full rounded-full ${remaining < 0 ? "bg-[#b42318]" : "bg-[#8a6a3f]"}`}
+          style={{ width: `${barWidth}%` }}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 text-sm min-[420px]:grid-cols-2 lg:grid-cols-4">
+        <InsightItem label="予算" value={hasBudget ? yen(budget) : "未設定"} />
+        <InsightItem label="使用済" value={yen(expense)} />
+        <InsightItem
+          label="残り"
+          value={yen(remaining)}
+          tone={remaining < 0 ? "red" : "green"}
+        />
+        <InsightItem
+          label="月末予測"
+          value={yen(projectedExpense)}
+          subLabel={hasBudget ? `予測残り ${yen(projectedRemaining)}` : undefined}
+          tone={projectedRemaining < 0 ? "red" : "dark"}
+        />
+      </div>
+    </section>
+  );
+}
+
+function InsightItem({
+  label,
+  value,
+  subLabel,
+  tone = "dark",
+}: {
+  label: string;
+  value: string;
+  subLabel?: string;
+  tone?: "green" | "red" | "dark";
+}) {
+  const textClass =
+    tone === "green" ? "text-[#047857]" : tone === "red" ? "text-[#b42318]" : "text-[#24190f]";
+
+  return (
+    <div className="rounded-xl border border-[#f0e7d8] bg-[#fbfaf7] p-3">
+      <p className="text-xs font-bold text-[#6b7280]">{label}</p>
+      <p className={`mt-1 text-lg font-black ${textClass}`}>{value}</p>
+      {subLabel && <p className="mt-1 text-[11px] font-bold text-[#6b7280]">{subLabel}</p>}
     </div>
   );
 }
