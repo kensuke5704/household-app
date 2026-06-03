@@ -227,3 +227,50 @@ textarea {
     word-break: break-word;
   }
 }
+
+/* Mobile date/month input overflow fix */
+@media (max-width: 767px) {
+  input[type="date"],
+  input[type="month"] {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    appearance: none;
+    -webkit-appearance: none;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    font-size: 16px !important;
+    line-height: 1.2 !important;
+  }
+
+  input[type="date"]::-webkit-date-and-time-value,
+  input[type="month"]::-webkit-date-and-time-value {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    text-align: left;
+  }
+
+  input[type="date"]::-webkit-datetime-edit,
+  input[type="month"]::-webkit-datetime-edit {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+  input[type="month"]::-webkit-datetime-edit-fields-wrapper {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  label,
+  .field,
+  .form-grid,
+  form {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+}
