@@ -82,7 +82,7 @@ export default function Page() {
 
         {message && <div className="mb-5 rounded-lg border border-[#f2b8b5] bg-[#fff4f2] px-4 py-3 text-sm font-bold text-[#b42318]">{message}</div>}
 
-        <section className="mb-4 grid grid-cols-2 gap-2 sm:mb-6 sm:gap-3 lg:grid-cols-4 lg:gap-4">
+        <section className="mb-4 grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 sm:mb-6 sm:gap-3 lg:grid-cols-4 lg:gap-4">
           <KpiCard label="収入" value={income} tone="green" />
           <KpiCard label="支出" value={expense} tone="red" />
           <KpiCard label="残高" value={balance} tone={balance < 0 ? "red" : "dark"} />
@@ -199,7 +199,7 @@ function InputPanel({ month, onAdded, setMessage }: { month: string; onAdded: ()
           <button type="button" onClick={() => setType("income")} className={`rounded-md py-2 text-sm font-bold ${type === "income" ? "bg-white text-[#047857] shadow-sm" : "text-[#6b7280]"}`}>収入</button>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <Field label="日付"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input-desktop" /></Field>
           <Field label="金額"><input inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} placeholder="1100" className="input-desktop text-right" /></Field>
         </div>
@@ -349,7 +349,7 @@ function SummaryTable({ title, rows, type }: { title: string; rows: SummaryRow[]
               <p className="font-bold text-[#24190f]">{row.category}</p>
               <p className={`font-bold ${row.diff < 0 ? "text-[#b42318]" : "text-[#047857]"}`}>{yen(row.diff)}</p>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="grid grid-cols-1 gap-2 text-sm min-[380px]:grid-cols-2">
               <div className="rounded-lg bg-white p-2"><p className="text-xs font-bold text-[#6b7280]">予算</p><p className="font-bold text-[#24190f]">{yen(row.budget)}</p></div>
               <div className="rounded-lg bg-white p-2"><p className="text-xs font-bold text-[#6b7280]">実績</p><p className="font-bold text-[#24190f]">{yen(row.actual)}</p></div>
             </div>
@@ -392,7 +392,7 @@ function BudgetPanel({ month, budgets, onSaved, setMessage }: { month: string; b
       </div>
       <div className="max-h-none space-y-2 overflow-visible pr-0 lg:max-h-[360px] lg:overflow-auto lg:pr-1">
         {budgets.map((budget) => (
-          <label key={budget.category} className="grid grid-cols-[1fr_104px] items-center gap-2 rounded-lg border border-[#f0e7d8] bg-[#fbfaf7] px-3 py-2 sm:grid-cols-[1fr_130px]">
+          <label key={budget.category} className="grid grid-cols-1 items-center gap-2 rounded-lg border border-[#f0e7d8] bg-[#fbfaf7] px-3 py-2 min-[380px]:grid-cols-[minmax(0,1fr)_104px] sm:grid-cols-[minmax(0,1fr)_130px]">
             <span className="text-sm font-bold text-[#24190f]">{budget.category}</span>
             <input inputMode="numeric" value={drafts[budget.category] ?? ""} onChange={(e) => setDrafts({ ...drafts, [budget.category]: e.target.value.replace(/[^0-9]/g, "") })} className="h-9 rounded-md border border-[#d7c7aa] bg-white px-2 text-right text-sm font-bold text-[#24190f]" />
           </label>

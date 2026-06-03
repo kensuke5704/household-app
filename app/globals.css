@@ -150,3 +150,80 @@ textarea {
     max-width: 100%;
   }
 }
+
+
+/* Strict mobile overflow guard */
+@media (max-width: 767px) {
+  html,
+  body {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: clip !important;
+  }
+
+  #__next,
+  main,
+  main * {
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  main {
+    width: 100% !important;
+    overflow-x: clip !important;
+  }
+
+  main > div {
+    width: 100% !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    overflow-x: clip !important;
+  }
+
+  .mobile-section-nav {
+    position: static;
+    width: 100% !important;
+    max-width: 100% !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-radius: 14px;
+  }
+
+  .mobile-section-nav a {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.2;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    width: 100%;
+    max-width: 100% !important;
+  }
+
+  table,
+  thead,
+  tbody,
+  tr,
+  th,
+  td {
+    max-width: 100% !important;
+  }
+
+  .table-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: clip !important;
+  }
+
+  .kpi-value,
+  p,
+  h1,
+  h2,
+  span,
+  div {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
