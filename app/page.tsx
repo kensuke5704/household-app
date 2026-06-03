@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, Home, List, Plus, Settings, Trash2, WalletCards } from "lucide-react";
+import { BarChart3, CalendarDays, Plus, RefreshCw, Trash2, WalletCards } from "lucide-react";
 import { expenseCategories, incomeCategories, recurringTemplates } from "@/lib/categories";
 import {
   addTransaction,
@@ -12,20 +12,9 @@ import {
   saveBudgets,
 } from "@/lib/householdStore";
 import { currentMonthString, makeSummaryRows, todayString, totalByType, yen } from "@/lib/utils";
-import type { HouseholdBudget, HouseholdTransaction, TransactionType } from "@/types/household";
-
-type Tab = "ホーム" | "入力" | "履歴" | "分析" | "予算";
-
-const tabs: Array<{ label: Tab; icon: React.ReactNode }> = [
-  { label: "ホーム", icon: <Home size={21} /> },
-  { label: "入力", icon: <Plus size={23} /> },
-  { label: "履歴", icon: <List size={21} /> },
-  { label: "分析", icon: <BarChart3 size={21} /> },
-  { label: "予算", icon: <Settings size={21} /> },
-];
+import type { HouseholdBudget, HouseholdTransaction, SummaryRow, TransactionType } from "@/types/household";
 
 export default function Page() {
-  const [tab, setTab] = useState<Tab>("ホーム");
   const [month, setMonth] = useState(currentMonthString());
   const [transactions, setTransactions] = useState<HouseholdTransaction[]>([]);
   const [budgets, setBudgets] = useState<HouseholdBudget[]>([]);
@@ -38,6 +27,7 @@ export default function Page() {
       const [transactionRows, budgetRows] = await Promise.all([getTransactions(month), getBudgets(month)]);
       setTransactions(transactionRows);
       setBudgets(budgetRows);
+      setMessage("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "データ取得に失敗しました");
     } finally {
@@ -57,154 +47,80 @@ export default function Page() {
   const expenseRows = useMemo(() => makeSummaryRows(transactions, budgets, "expense"), [transactions, budgets]);
 
   return (
-    <main className="min-h-screen pb-28">
-      <div className="mx-auto max-w-md px-4 py-5">
-        <header className="mb-4 rounded-[32px] bg-[#fffaf0] p-5 shadow-soft">
-          <p className="text-xs font-black tracking-[0.2em] text-[#c08a28]">HOUSEHOLD BOOK</p>
-          <div className="mt-2 flex items-center justify-between gap-3">
+    <main className="min-h-screen bg-[#f7f3eb] text-[#1f2933]">
+      <div className="mx-auto max-w-[1440px] px-8 py-8">
+        <header className="mb-6 rounded-2xl border border-[#e6dcc8] bg-white px-6 py-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-black text-[#6b2f13]">家計簿</h1>
-              <p className="text-sm font-bold text-[#9b6b2f]">Excelの月別管理をWeb化</p>
+              <p className="text-xs font-bold tracking-[0.2em] text-[#8a6a3f]">HOUSEHOLD BOOK</p>
+              <h1 className="mt-1 text-3xl font-bold text-[#24190f]">家計簿</h1>
+              <p className="mt-1 text-sm text-[#6b7280]">Excelの入力・履歴・予算集計をPC画面向けに整理しています。</p>
             </div>
-            <WalletCards className="text-[#f0a500]" size={42} />
+            <div className="flex items-end gap-3">
+              <label className="block">
+                <span className="mb-1 block text-xs font-bold text-[#6b7280]">表示月</span>
+                <input
+                  type="month"
+                  value={month}
+                  onChange={(e) => setMonth(e.target.value)}
+                  className="h-11 rounded-lg border border-[#d7c7aa] bg-white px-3 text-sm font-bold text-[#24190f]"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={reload}
+                className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#d7c7aa] bg-[#fbfaf7] px-4 text-sm font-bold text-[#5b4630] hover:bg-[#f2eadc]"
+              >
+                <RefreshCw size={16} />
+                更新
+              </button>
+            </div>
           </div>
-          <label className="mt-4 block text-xs font-black text-[#9b6b2f]">表示月</label>
-          <input
-            type="month"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            className="mt-1 w-full rounded-2xl border-2 border-[#f1d59a] bg-white px-4 py-3 font-black text-[#6b2f13]"
-          />
         </header>
 
-        {message && (
-          <div className="mb-4 rounded-2xl bg-white p-3 text-sm font-bold text-[#b42318]">{message}</div>
-        )}
+        {message && <div className="mb-5 rounded-lg border border-[#f2b8b5] bg-[#fff4f2] px-4 py-3 text-sm font-bold text-[#b42318]">{message}</div>}
+
+        <section className="mb-6 grid grid-cols-4 gap-4">
+          <KpiCard label="収入" value={income} tone="green" />
+          <KpiCard label="支出" value={expense} tone="red" />
+          <KpiCard label="残高" value={balance} tone={balance < 0 ? "red" : "dark"} />
+          <KpiCard label="記録件数" value={`${transactions.length}件`} tone="dark" />
+        </section>
 
         {loading ? (
-          <div className="rounded-[28px] bg-white p-8 text-center font-black text-[#9b6b2f]">読み込み中...</div>
+          <div className="rounded-2xl border border-[#e6dcc8] bg-white p-10 text-center font-bold text-[#6b7280]">読み込み中...</div>
         ) : (
-          <>
-            {tab === "ホーム" && (
-              <HomeScreen
-                income={income}
-                expense={expense}
-                balance={balance}
-                expenseRows={expenseRows}
-                recentTransactions={transactions.slice(0, 5)}
-              />
-            )}
-            {tab === "入力" && <InputScreen month={month} onAdded={reload} setMessage={setMessage} />}
-            {tab === "履歴" && (
-              <HistoryScreen transactions={transactions} onDeleted={reload} setMessage={setMessage} />
-            )}
-            {tab === "分析" && <AnalysisScreen incomeRows={incomeRows} expenseRows={expenseRows} />}
-            {tab === "予算" && (
-              <BudgetScreen month={month} budgets={budgets} onSaved={reload} setMessage={setMessage} />
-            )}
-          </>
+          <div className="grid grid-cols-12 gap-5">
+            <aside className="col-span-4 space-y-5">
+              <InputPanel month={month} onAdded={reload} setMessage={setMessage} />
+              <BudgetPanel month={month} budgets={budgets} onSaved={reload} setMessage={setMessage} />
+            </aside>
+
+            <section className="col-span-8 space-y-5">
+              <HistoryTable transactions={transactions} onDeleted={reload} setMessage={setMessage} />
+              <div className="grid grid-cols-2 gap-5">
+                <SummaryTable title="支出集計" rows={expenseRows} type="expense" />
+                <SummaryTable title="収入集計" rows={incomeRows} type="income" />
+              </div>
+            </section>
+          </div>
         )}
       </div>
-
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#efd7a1] bg-[#fffaf0]/95 px-3 py-2 backdrop-blur">
-        <div className="mx-auto flex max-w-md justify-between gap-1">
-          {tabs.map((item) => {
-            const active = tab === item.label;
-            return (
-              <button
-                key={item.label}
-                type="button"
-                onClick={() => setTab(item.label)}
-                className={`flex flex-1 flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-black transition ${
-                  active ? "bg-[#ffd66b] text-[#6b2f13]" : "text-[#9b6b2f]"
-                }`}
-              >
-                {item.icon}
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
-      </nav>
     </main>
   );
 }
 
-function HomeScreen({
-  income,
-  expense,
-  balance,
-  expenseRows,
-  recentTransactions,
-}: {
-  income: number;
-  expense: number;
-  balance: number;
-  expenseRows: ReturnType<typeof makeSummaryRows>;
-  recentTransactions: HouseholdTransaction[];
-}) {
-  const used = expenseRows.reduce((sum, row) => sum + row.actual, 0);
-  const budget = expenseRows.reduce((sum, row) => sum + row.budget, 0);
-  const percent = budget > 0 ? Math.min(100, Math.round((used / budget) * 100)) : 0;
-
+function KpiCard({ label, value, tone }: { label: string; value: number | string; tone: "green" | "red" | "dark" }) {
+  const textClass = tone === "green" ? "text-[#047857]" : tone === "red" ? "text-[#b42318]" : "text-[#24190f]";
   return (
-    <section className="space-y-4">
-      <div className="rounded-[36px] bg-[#fff4d7] p-5 shadow-soft">
-        <p className="text-sm font-black text-[#9b6b2f]">今月の残り</p>
-        <p className={`mt-1 text-4xl font-black ${balance < 0 ? "text-[#b42318]" : "text-[#6b2f13]"}`}>
-          {yen(balance)}
-        </p>
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <Kpi label="収入" value={income} />
-          <Kpi label="支出" value={expense} />
-        </div>
-      </div>
-
-      <div className="rounded-[28px] bg-white p-5 shadow-soft">
-        <div className="flex items-end justify-between">
-          <div>
-            <p className="text-sm font-black text-[#9b6b2f]">支出予算の使用率</p>
-            <p className="text-2xl font-black text-[#6b2f13]">{percent}%</p>
-          </div>
-          <p className="text-sm font-black text-[#9b6b2f]">{yen(used)} / {yen(budget)}</p>
-        </div>
-        <div className="mt-3 h-4 overflow-hidden rounded-full bg-[#f5e1ad]">
-          <div className="h-full rounded-full bg-[#f0a500]" style={{ width: `${percent}%` }} />
-        </div>
-      </div>
-
-      <div className="rounded-[28px] bg-white p-5 shadow-soft">
-        <p className="mb-3 text-sm font-black text-[#9b6b2f]">最近の記録</p>
-        {recentTransactions.length === 0 ? (
-          <p className="text-sm font-bold text-[#9b6b2f]">まだ記録がありません。</p>
-        ) : (
-          <div className="space-y-2">
-            {recentTransactions.map((t) => <TransactionLine key={t.id} transaction={t} />)}
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function Kpi({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-3xl bg-white p-4">
-      <p className="text-xs font-black text-[#9b6b2f]">{label}</p>
-      <p className="text-xl font-black text-[#6b2f13]">{yen(value)}</p>
+    <div className="rounded-2xl border border-[#e6dcc8] bg-white p-5 shadow-sm">
+      <p className="text-sm font-bold text-[#6b7280]">{label}</p>
+      <p className={`mt-2 text-3xl font-bold ${textClass}`}>{typeof value === "number" ? yen(value) : value}</p>
     </div>
   );
 }
 
-function InputScreen({
-  month,
-  onAdded,
-  setMessage,
-}: {
-  month: string;
-  onAdded: () => Promise<void>;
-  setMessage: (value: string) => void;
-}) {
+function InputPanel({ month, onAdded, setMessage }: { month: string; onAdded: () => Promise<void>; setMessage: (value: string) => void }) {
   const [type, setType] = useState<TransactionType>("expense");
   const [date, setDate] = useState(todayString());
   const [category, setCategory] = useState("食費");
@@ -256,35 +172,39 @@ function InputScreen({
   }
 
   return (
-    <section className="space-y-4">
-      <form onSubmit={handleSubmit} className="rounded-[32px] bg-white p-5 shadow-soft">
-        <p className="text-lg font-black text-[#6b2f13]">記録を追加</p>
-        <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-[#fff4d7] p-1">
-          <button type="button" onClick={() => setType("expense")} className={`rounded-xl py-3 font-black ${type === "expense" ? "bg-[#f0a500] text-white" : "text-[#9b6b2f]"}`}>支出</button>
-          <button type="button" onClick={() => setType("income")} className={`rounded-xl py-3 font-black ${type === "income" ? "bg-[#f0a500] text-white" : "text-[#9b6b2f]"}`}>収入</button>
-        </div>
-        <Field label="日付"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input" /></Field>
-        <Field label="大分類"><select value={category} onChange={(e) => setCategory(e.target.value)} className="input">{categories.map((c) => <option key={c}>{c}</option>)}</select></Field>
-        <Field label="小分類"><input value={subcategory} onChange={(e) => setSubcategory(e.target.value)} placeholder="例：学食、ドトール、給与" className="input" /></Field>
-        <Field label="金額"><input inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} placeholder="1100" className="input" /></Field>
-        <Field label="メモ"><textarea value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="任意" className="input min-h-20" /></Field>
-        <button type="submit" className="mt-5 w-full rounded-2xl bg-[#f0a500] py-4 text-lg font-black text-white">保存</button>
-      </form>
-
-      <div className="rounded-[28px] bg-[#fff4d7] p-5 shadow-soft">
-        <p className="font-black text-[#6b2f13]">Excelにあった固定費</p>
-        <p className="mt-1 text-sm font-bold text-[#9b6b2f]">DAZN、Amazon Prime、携帯料金、Adobeなどを月初の日付でまとめて追加します。</p>
-        <button type="button" onClick={addFixedCosts} className="mt-4 w-full rounded-2xl bg-white py-3 font-black text-[#6b2f13]">固定費テンプレートを追加</button>
+    <div className="rounded-2xl border border-[#e6dcc8] bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center gap-2">
+        <Plus size={18} className="text-[#8a6a3f]" />
+        <h2 className="text-lg font-bold text-[#24190f]">入力</h2>
       </div>
-    </section>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="grid grid-cols-2 gap-2 rounded-lg bg-[#f3eadb] p-1">
+          <button type="button" onClick={() => setType("expense")} className={`rounded-md py-2 text-sm font-bold ${type === "expense" ? "bg-white text-[#b42318] shadow-sm" : "text-[#6b7280]"}`}>支出</button>
+          <button type="button" onClick={() => setType("income")} className={`rounded-md py-2 text-sm font-bold ${type === "income" ? "bg-white text-[#047857] shadow-sm" : "text-[#6b7280]"}`}>収入</button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="日付"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input-desktop" /></Field>
+          <Field label="金額"><input inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} placeholder="1100" className="input-desktop text-right" /></Field>
+        </div>
+        <Field label="大分類"><select value={category} onChange={(e) => setCategory(e.target.value)} className="input-desktop">{categories.map((c) => <option key={c}>{c}</option>)}</select></Field>
+        <Field label="小分類"><input value={subcategory} onChange={(e) => setSubcategory(e.target.value)} placeholder="例：学食、ドトール、給与" className="input-desktop" /></Field>
+        <Field label="メモ"><textarea value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="任意" className="input-desktop min-h-20" /></Field>
+
+        <button type="submit" className="w-full rounded-lg bg-[#5b4630] py-3 text-sm font-bold text-white hover:bg-[#3f3020]">保存</button>
+      </form>
+      <button type="button" onClick={addFixedCosts} className="mt-3 w-full rounded-lg border border-[#d7c7aa] bg-[#fbfaf7] py-3 text-sm font-bold text-[#5b4630] hover:bg-[#f2eadc]">
+        固定費テンプレートを追加
+      </button>
+    </div>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="mt-4 block"><span className="mb-1 block text-xs font-black text-[#9b6b2f]">{label}</span>{children}</label>;
+  return <label className="block"><span className="mb-1 block text-xs font-bold text-[#6b7280]">{label}</span>{children}</label>;
 }
 
-function HistoryScreen({ transactions, onDeleted, setMessage }: { transactions: HouseholdTransaction[]; onDeleted: () => Promise<void>; setMessage: (value: string) => void }) {
+function HistoryTable({ transactions, onDeleted, setMessage }: { transactions: HouseholdTransaction[]; onDeleted: () => Promise<void>; setMessage: (value: string) => void }) {
   async function handleDelete(id: string) {
     try {
       await deleteTransaction(id);
@@ -296,56 +216,98 @@ function HistoryScreen({ transactions, onDeleted, setMessage }: { transactions: 
   }
 
   return (
-    <section className="space-y-3">
-      {transactions.length === 0 ? <Empty text="この月の記録はまだありません。" /> : transactions.map((t) => (
-        <div key={t.id} className="rounded-[26px] bg-white p-4 shadow-soft">
-          <div className="flex items-start justify-between gap-3">
-            <TransactionLine transaction={t} />
-            <button type="button" onClick={() => handleDelete(t.id)} className="rounded-full bg-[#fff4d7] p-2 text-[#9b6b2f]"><Trash2 size={18} /></button>
-          </div>
-          {t.memo && <p className="mt-2 rounded-2xl bg-[#fffaf0] px-3 py-2 text-sm font-bold text-[#9b6b2f]">{t.memo}</p>}
+    <div className="rounded-2xl border border-[#e6dcc8] bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-[#eee4d2] px-5 py-4">
+        <div className="flex items-center gap-2">
+          <CalendarDays size={18} className="text-[#8a6a3f]" />
+          <h2 className="text-lg font-bold text-[#24190f]">履歴</h2>
         </div>
-      ))}
-    </section>
-  );
-}
-
-function AnalysisScreen({ incomeRows, expenseRows }: { incomeRows: ReturnType<typeof makeSummaryRows>; expenseRows: ReturnType<typeof makeSummaryRows> }) {
-  return (
-    <section className="space-y-4">
-      <SummaryTable title="収入" rows={incomeRows} type="income" />
-      <SummaryTable title="支出" rows={expenseRows} type="expense" />
-    </section>
-  );
-}
-
-function SummaryTable({ title, rows, type }: { title: string; rows: ReturnType<typeof makeSummaryRows>; type: TransactionType }) {
-  const totalBudget = rows.reduce((sum, r) => sum + r.budget, 0);
-  const totalActual = rows.reduce((sum, r) => sum + r.actual, 0);
-  const totalDiff = type === "income" ? totalActual - totalBudget : totalBudget - totalActual;
-  return (
-    <div className="rounded-[28px] bg-white p-5 shadow-soft">
-      <p className="mb-3 text-lg font-black text-[#6b2f13]">{title}</p>
-      <div className="space-y-3">
-        {rows.map((row) => {
-          const max = Math.max(row.budget, row.actual, 1);
-          const width = Math.min(100, Math.round((row.actual / max) * 100));
-          return (
-            <div key={row.category}>
-              <div className="flex justify-between text-sm font-black text-[#6b2f13]"><span>{row.category}</span><span>{yen(row.actual)}</span></div>
-              <div className="mt-1 h-2 overflow-hidden rounded-full bg-[#f5e1ad]"><div className="h-full rounded-full bg-[#f0a500]" style={{ width: `${width}%` }} /></div>
-              <div className="mt-1 flex justify-between text-xs font-bold text-[#9b6b2f]"><span>予算 {yen(row.budget)}</span><span>差額 {yen(row.diff)}</span></div>
-            </div>
-          );
-        })}
+        <p className="text-sm font-bold text-[#6b7280]">{transactions.length}件</p>
       </div>
-      <div className="mt-4 rounded-2xl bg-[#fff4d7] p-3 text-sm font-black text-[#6b2f13]">合計：予算 {yen(totalBudget)} / 実費 {yen(totalActual)} / 差額 {yen(totalDiff)}</div>
+      <div className="max-h-[520px] overflow-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead className="sticky top-0 bg-[#fbfaf7] text-left text-xs font-bold text-[#6b7280]">
+            <tr>
+              <th className="px-4 py-3">日付</th>
+              <th className="px-4 py-3">種別</th>
+              <th className="px-4 py-3">大分類</th>
+              <th className="px-4 py-3">小分類</th>
+              <th className="px-4 py-3 text-right">金額</th>
+              <th className="px-4 py-3">メモ</th>
+              <th className="px-4 py-3 text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {transactions.length === 0 ? (
+              <tr><td colSpan={7} className="px-4 py-10 text-center font-bold text-[#6b7280]">この月の記録はまだありません。</td></tr>
+            ) : (
+              transactions.map((t) => (
+                <tr key={t.id} className="border-t border-[#f0e7d8] hover:bg-[#fffaf0]">
+                  <td className="whitespace-nowrap px-4 py-3 font-medium text-[#24190f]">{t.date}</td>
+                  <td className="px-4 py-3"><span className={`rounded-full px-2 py-1 text-xs font-bold ${t.type === "income" ? "bg-[#e8f7ef] text-[#047857]" : "bg-[#fff0ed] text-[#b42318]"}`}>{t.type === "income" ? "収入" : "支出"}</span></td>
+                  <td className="px-4 py-3 font-medium text-[#24190f]">{t.category}</td>
+                  <td className="px-4 py-3 text-[#4b5563]">{t.subcategory || "-"}</td>
+                  <td className={`px-4 py-3 text-right font-bold ${t.type === "income" ? "text-[#047857]" : "text-[#b42318]"}`}>{t.type === "income" ? "+" : "-"}{yen(t.amount)}</td>
+                  <td className="max-w-[220px] truncate px-4 py-3 text-[#6b7280]">{t.memo || ""}</td>
+                  <td className="px-4 py-3 text-right"><button type="button" onClick={() => handleDelete(t.id)} className="inline-flex rounded-md border border-[#ead8d4] bg-white p-2 text-[#b42318] hover:bg-[#fff0ed]"><Trash2 size={15} /></button></td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
-function BudgetScreen({ month, budgets, onSaved, setMessage }: { month: string; budgets: HouseholdBudget[]; onSaved: () => Promise<void>; setMessage: (value: string) => void }) {
+function SummaryTable({ title, rows, type }: { title: string; rows: SummaryRow[]; type: TransactionType }) {
+  const totalBudget = rows.reduce((sum, r) => sum + r.budget, 0);
+  const totalActual = rows.reduce((sum, r) => sum + r.actual, 0);
+  const totalDiff = type === "income" ? totalActual - totalBudget : totalBudget - totalActual;
+
+  return (
+    <div className="rounded-2xl border border-[#e6dcc8] bg-white shadow-sm">
+      <div className="flex items-center gap-2 border-b border-[#eee4d2] px-5 py-4">
+        <BarChart3 size={18} className="text-[#8a6a3f]" />
+        <h2 className="text-lg font-bold text-[#24190f]">{title}</h2>
+      </div>
+      <div className="overflow-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-[#fbfaf7] text-left text-xs font-bold text-[#6b7280]">
+            <tr>
+              <th className="px-4 py-3">分類</th>
+              <th className="px-4 py-3 text-right">予算</th>
+              <th className="px-4 py-3 text-right">実績</th>
+              <th className="px-4 py-3 text-right">差額</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.category} className="border-t border-[#f0e7d8]">
+                <td className="px-4 py-3 font-medium text-[#24190f]">{row.category}</td>
+                <td className="px-4 py-3 text-right text-[#4b5563]">{yen(row.budget)}</td>
+                <td className="px-4 py-3 text-right font-bold text-[#24190f]">{yen(row.actual)}</td>
+                <td className={`px-4 py-3 text-right font-bold ${row.diff < 0 ? "text-[#b42318]" : "text-[#047857]"}`}>{yen(row.diff)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="border-t-2 border-[#e6dcc8] bg-[#fbfaf7] font-bold">
+            <tr>
+              <td className="px-4 py-3">合計</td>
+              <td className="px-4 py-3 text-right">{yen(totalBudget)}</td>
+              <td className="px-4 py-3 text-right">{yen(totalActual)}</td>
+              <td className={`px-4 py-3 text-right ${totalDiff < 0 ? "text-[#b42318]" : "text-[#047857]"}`}>{yen(totalDiff)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function BudgetPanel({ month, budgets, onSaved, setMessage }: { month: string; budgets: HouseholdBudget[]; onSaved: () => Promise<void>; setMessage: (value: string) => void }) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+
   useEffect(() => {
     setDrafts(Object.fromEntries(budgets.map((b) => [b.category, String(b.budget)])));
   }, [budgets]);
@@ -362,33 +324,20 @@ function BudgetScreen({ month, budgets, onSaved, setMessage }: { month: string; 
   }
 
   return (
-    <section className="rounded-[32px] bg-white p-5 shadow-soft">
-      <p className="text-lg font-black text-[#6b2f13]">月別予算</p>
-      <p className="mt-1 text-sm font-bold text-[#9b6b2f]">Excel右側の「予算・実費・差額」の予算欄です。</p>
-      <div className="mt-4 space-y-3">
+    <div className="rounded-2xl border border-[#e6dcc8] bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center gap-2">
+        <WalletCards size={18} className="text-[#8a6a3f]" />
+        <h2 className="text-lg font-bold text-[#24190f]">月別予算</h2>
+      </div>
+      <div className="max-h-[360px] space-y-2 overflow-auto pr-1">
         {budgets.map((budget) => (
-          <label key={budget.category} className="flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf0] p-3">
-            <span className="font-black text-[#6b2f13]">{budget.category}</span>
-            <input inputMode="numeric" value={drafts[budget.category] ?? ""} onChange={(e) => setDrafts({ ...drafts, [budget.category]: e.target.value.replace(/[^0-9]/g, "") })} className="w-32 rounded-xl border-2 border-[#f1d59a] bg-white px-3 py-2 text-right font-black text-[#6b2f13]" />
+          <label key={budget.category} className="grid grid-cols-[1fr_130px] items-center gap-3 rounded-lg border border-[#f0e7d8] bg-[#fbfaf7] px-3 py-2">
+            <span className="text-sm font-bold text-[#24190f]">{budget.category}</span>
+            <input inputMode="numeric" value={drafts[budget.category] ?? ""} onChange={(e) => setDrafts({ ...drafts, [budget.category]: e.target.value.replace(/[^0-9]/g, "") })} className="h-9 rounded-md border border-[#d7c7aa] bg-white px-2 text-right text-sm font-bold text-[#24190f]" />
           </label>
         ))}
       </div>
-      <button type="button" onClick={handleSave} className="mt-5 w-full rounded-2xl bg-[#f0a500] py-4 text-lg font-black text-white">予算を保存</button>
-    </section>
-  );
-}
-
-function TransactionLine({ transaction }: { transaction: HouseholdTransaction }) {
-  const sign = transaction.type === "income" ? "+" : "-";
-  return (
-    <div className="min-w-0 flex-1">
-      <p className="text-xs font-black text-[#9b6b2f]">{transaction.date}</p>
-      <p className="truncate font-black text-[#6b2f13]">{transaction.category} / {transaction.subcategory || "未入力"}</p>
-      <p className={`text-xl font-black ${transaction.type === "income" ? "text-[#157347]" : "text-[#6b2f13]"}`}>{sign}{yen(transaction.amount)}</p>
+      <button type="button" onClick={handleSave} className="mt-4 w-full rounded-lg bg-[#5b4630] py-3 text-sm font-bold text-white hover:bg-[#3f3020]">予算を保存</button>
     </div>
   );
-}
-
-function Empty({ text }: { text: string }) {
-  return <div className="rounded-[28px] bg-white p-8 text-center font-black text-[#9b6b2f] shadow-soft">{text}</div>;
 }

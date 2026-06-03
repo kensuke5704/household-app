@@ -12,8 +12,8 @@
 
 body {
   margin: 0;
-  background: #f6e7bf;
-  color: #6b2f13;
+  background: #f7f3eb;
+  color: #1f2933;
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -24,17 +24,28 @@ textarea {
   font: inherit;
 }
 
+button {
+  cursor: pointer;
+}
+
 input,
 select,
 textarea {
   outline: none;
 }
-.input {
+
+.input-desktop {
   width: 100%;
-  border-radius: 18px;
-  border: 2px solid #f1d59a;
-  background: #fffaf0;
-  padding: 12px 14px;
-  font-weight: 900;
-  color: #6b2f13;
+  border-radius: 8px;
+  border: 1px solid #d7c7aa;
+  background: #ffffff;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #24190f;
+}
+
+.input-desktop:focus {
+  border-color: #8a6a3f;
+  box-shadow: 0 0 0 3px rgba(138, 106, 63, 0.12);
 }
