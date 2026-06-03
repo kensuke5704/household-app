@@ -6,12 +6,9 @@
   color-scheme: light;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-html,
-body {
+html, body {
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
@@ -24,22 +21,9 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
-
-button {
-  cursor: pointer;
-}
-
-input,
-select,
-textarea {
-  outline: none;
-}
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+input, select, textarea { outline: none; }
 
 .input-desktop {
   width: 100%;
@@ -58,14 +42,6 @@ textarea {
 }
 
 @media (max-width: 767px) {
-  html {
-    scroll-behavior: smooth;
-  }
-
-  body {
-    background: #f7f3eb;
-  }
-
   .input-desktop {
     min-height: 44px;
     border-radius: 10px;
@@ -80,82 +56,10 @@ textarea {
 .mobile-section-nav {
   position: sticky;
   top: 92px;
-  z-index: 15;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  margin: 0 0 12px;
-  padding: 6px;
-  border: 1px solid #e6dcc8;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 10px 24px rgba(36, 25, 15, 0.08);
-  backdrop-filter: blur(10px);
-}
-
-.mobile-section-nav a {
-  display: flex;
-  min-height: 36px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  color: #5b4630;
-  font-size: 12px;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.mobile-section-nav a:active {
-  background: #f3eadb;
-}
-
-
-@media (max-width: 1023px) {
-  main,
-  main > div,
-  section,
-  header,
-  nav,
-  form,
-  div {
-    min-width: 0;
-  }
-
-  table {
-    width: 100%;
-    max-width: 100%;
-  }
 }
 
 @media (max-width: 767px) {
-  .mobile-section-nav {
-    top: 76px;
-    width: 100%;
-    max-width: calc(100vw - 24px);
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    border-radius: 18px;
-  }
-
-  .mobile-section-nav a {
-    min-width: 0;
-    padding: 0 4px;
-    font-size: 11px;
-    white-space: nowrap;
-  }
-
-  input,
-  select,
-  textarea,
-  button {
-    max-width: 100%;
-  }
-}
-
-
-/* Strict mobile overflow guard */
-@media (max-width: 767px) {
-  html,
-  body {
+  html, body {
     width: 100% !important;
     max-width: 100% !important;
     overflow-x: clip !important;
@@ -163,68 +67,16 @@ textarea {
 
   #__next,
   main,
-  main * {
-    max-width: 100% !important;
-    min-width: 0 !important;
-  }
-
-  main {
-    width: 100% !important;
-    overflow-x: clip !important;
-  }
-
-  main > div {
-    width: 100% !important;
-    padding-left: 10px !important;
-    padding-right: 10px !important;
-    overflow-x: clip !important;
-  }
-
-  .mobile-section-nav {
-    position: static;
-    width: 100% !important;
-    max-width: 100% !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    border-radius: 14px;
-  }
-
-  .mobile-section-nav a {
-    white-space: normal;
-    overflow-wrap: anywhere;
-    line-height: 1.2;
+  main > * {
+    max-width: 100%;
+    min-width: 0;
   }
 
   input,
   select,
   textarea,
   button {
-    width: 100%;
     max-width: 100% !important;
-  }
-
-  table,
-  thead,
-  tbody,
-  tr,
-  th,
-  td {
-    max-width: 100% !important;
-  }
-
-  .table-wrap {
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow-x: clip !important;
-  }
-
-  .kpi-value,
-  p,
-  h1,
-  h2,
-  span,
-  div {
-    overflow-wrap: anywhere;
-    word-break: break-word;
   }
 }
 
@@ -232,37 +84,12 @@ textarea {
 @media (max-width: 767px) {
   input[type="date"],
   input[type="month"] {
-    display: block !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    appearance: none;
-    -webkit-appearance: none;
-    padding-left: 10px !important;
-    padding-right: 10px !important;
-    font-size: 16px !important;
-    line-height: 1.2 !important;
-  }
-
-  input[type="date"]::-webkit-date-and-time-value,
-  input[type="month"]::-webkit-date-and-time-value {
-    min-width: 0 !important;
-    max-width: 100% !important;
-    text-align: left;
-  }
-
-  input[type="date"]::-webkit-datetime-edit,
-  input[type="month"]::-webkit-datetime-edit {
-    min-width: 0 !important;
-    max-width: 100% !important;
-    overflow: hidden !important;
-  }
-
-  input[type="date"]::-webkit-datetime-edit-fields-wrapper,
-  input[type="month"]::-webkit-datetime-edit-fields-wrapper {
-    min-width: 0 !important;
-    max-width: 100% !important;
+    width: 100%;
+    height: 56px;
+    padding: 0 16px;
+    font-size: 16px;
+    line-height: normal;
+    box-sizing: border-box;
   }
 
   label,
