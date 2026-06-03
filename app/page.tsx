@@ -49,10 +49,10 @@ export default function Page() {
 
   return (
     <LoginGate>
-      <main className="min-h-screen bg-[#f7f3eb] pb-20 text-[#1f2933] lg:pb-0">
-      <div className="mx-auto max-w-[1440px] px-3 py-3 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
-        <header className="sticky top-0 z-20 mb-3 rounded-b-2xl border border-[#e6dcc8] bg-white/95 px-4 py-3 shadow-sm backdrop-blur sm:mb-6 sm:rounded-2xl sm:px-6 sm:py-5 lg:static">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+      <main className="min-h-screen w-full overflow-x-hidden bg-[#f7f3eb] pb-20 text-[#1f2933] lg:pb-0">
+      <div className="mx-auto w-full max-w-[1440px] min-w-0 overflow-x-hidden px-3 py-3 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+        <header className="sticky top-0 z-20 mb-3 min-w-0 rounded-b-2xl border border-[#e6dcc8] bg-white/95 px-4 py-3 shadow-sm backdrop-blur sm:mb-6 sm:rounded-2xl sm:px-6 sm:py-5 lg:static">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-xs font-bold tracking-[0.2em] text-[#8a6a3f]">HOUSEHOLD BOOK</p>
               <h1 className="mt-1 text-xl font-bold text-[#24190f] sm:text-3xl">家計簿</h1>
@@ -99,23 +99,23 @@ export default function Page() {
         {loading ? (
           <div className="rounded-2xl border border-[#e6dcc8] bg-white p-10 text-center font-bold text-[#6b7280]">読み込み中...</div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
-            <section id="input-section" className="scroll-mt-24 lg:col-span-4 lg:row-start-1">
+          <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
+            <section id="input-section" className="min-w-0 scroll-mt-24 lg:col-span-4 lg:row-start-1">
               <InputPanel month={month} onAdded={reload} setMessage={setMessage} />
             </section>
 
-            <section id="history-section" className="scroll-mt-24 lg:col-span-8 lg:row-span-2 lg:row-start-1">
+            <section id="history-section" className="min-w-0 scroll-mt-24 lg:col-span-8 lg:row-span-2 lg:row-start-1">
               <HistoryTable transactions={transactions} onDeleted={reload} setMessage={setMessage} />
             </section>
 
-            <section id="summary-section" className="scroll-mt-24 lg:col-span-8 lg:col-start-5">
+            <section id="summary-section" className="min-w-0 scroll-mt-24 lg:col-span-8 lg:col-start-5">
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-5">
                 <SummaryTable title="支出集計" rows={expenseRows} type="expense" />
                 <SummaryTable title="収入集計" rows={incomeRows} type="income" />
               </div>
             </section>
 
-            <section id="budget-section" className="scroll-mt-24 lg:col-span-4 lg:col-start-1 lg:row-start-2">
+            <section id="budget-section" className="min-w-0 scroll-mt-24 lg:col-span-4 lg:col-start-1 lg:row-start-2">
               <BudgetPanel month={month} budgets={budgets} onSaved={reload} setMessage={setMessage} />
             </section>
           </div>
@@ -240,7 +240,7 @@ function HistoryTable({ transactions, onDeleted, setMessage }: { transactions: H
         </div>
         <p className="text-sm font-bold text-[#6b7280]">{transactions.length}件</p>
       </div>
-      <div className="hidden max-h-[520px] overflow-auto md:block">
+      <div className="hidden max-h-[520px] overflow-auto lg:block">
         <table className="w-full border-collapse text-sm">
           <thead className="sticky top-0 bg-[#fbfaf7] text-left text-xs font-bold text-[#6b7280]">
             <tr>
@@ -272,7 +272,7 @@ function HistoryTable({ transactions, onDeleted, setMessage }: { transactions: H
           </tbody>
         </table>
       </div>
-      <div className="space-y-2 p-3 md:hidden">
+      <div className="space-y-2 p-3 lg:hidden">
         {transactions.length === 0 ? (
           <div className="rounded-xl bg-[#fbfaf7] px-4 py-8 text-center text-sm font-bold text-[#6b7280]">この月の記録はまだありません。</div>
         ) : (
@@ -312,7 +312,7 @@ function SummaryTable({ title, rows, type }: { title: string; rows: SummaryRow[]
         <BarChart3 size={18} className="text-[#8a6a3f]" />
         <h2 className="text-lg font-bold text-[#24190f]">{title}</h2>
       </div>
-      <div className="hidden overflow-auto md:block">
+      <div className="hidden overflow-auto lg:block">
         <table className="w-full text-sm">
           <thead className="bg-[#fbfaf7] text-left text-xs font-bold text-[#6b7280]">
             <tr>
@@ -342,7 +342,7 @@ function SummaryTable({ title, rows, type }: { title: string; rows: SummaryRow[]
           </tfoot>
         </table>
       </div>
-      <div className="space-y-2 p-3 md:hidden">
+      <div className="space-y-2 p-3 lg:hidden">
         {rows.map((row) => (
           <div key={row.category} className="rounded-xl border border-[#f0e7d8] bg-[#fbfaf7] p-3">
             <div className="mb-3 flex items-center justify-between gap-3">
