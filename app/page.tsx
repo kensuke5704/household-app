@@ -52,13 +52,33 @@ const frequentSubcategories: Record<TransactionType, string[]> = {
     "コンビニ",
     "外食",
     "カフェ",
-    "交通費",
+    "電車",
     "日用品",
     "携帯料金",
     "サブスク",
   ],
   income: ["給与", "副収入", "立替返金", "取崩し"],
 };
+
+const frequentSubcategoriesByCategory: Record<string, string[]> = {
+  食費: ["スーパー", "コンビニ", "外食", "カフェ", "昼食", "夕食"],
+  日用品: ["ドラッグストア", "洗剤", "消耗品", "雑貨"],
+  交通費: ["電車", "バス", "タクシー", "ガソリン"],
+  通信費: ["携帯料金", "インターネット", "サブスク"],
+  光熱費: ["電気", "ガス", "水道"],
+  住居費: ["家賃", "管理費", "更新料"],
+  娯楽費: ["映画", "本", "旅行", "イベント"],
+  医療費: ["病院", "薬", "歯科"],
+  被服費: ["服", "靴", "クリーニング"],
+  教育費: ["書籍", "講座", "教材"],
+  給与: ["給与", "賞与"],
+  副収入: ["副業", "配当", "売却益"],
+  その他収入: ["立替返金", "取崩し", "臨時収入"],
+};
+
+function getFrequentSubcategories(type: TransactionType, category: string) {
+  return frequentSubcategoriesByCategory[category] ?? frequentSubcategories[type];
+}
 
 function formatNumber(value: number | string) {
   const digits = String(value).replace(/[^0-9]/g, "");
@@ -321,6 +341,7 @@ function InputPanel({
 
   useEffect(() => {
     setCategory(type === "income" ? "給与" : "食費");
+    setSubcategory("");
   }, [type]);
 
   useEffect(() => {
@@ -467,7 +488,10 @@ function InputPanel({
         <Field label="大分類">
           <select
             value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              setSubcategory("");
+            }}
             className="input-desktop"
           >
             {categories.map((c) => (
@@ -486,16 +510,24 @@ function InputPanel({
             className="input-desktop"
           />
           <div className="mt-2 flex flex-wrap gap-2">
-            {frequentSubcategories[type].map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setSubcategory(item)}
-                className="rounded-full border border-[#e6dcc8] bg-[#fbfaf7] px-3 py-1.5 text-xs font-bold text-[#5b4630] active:bg-[#f3eadb]"
-              >
-                {item}
-              </button>
-            ))}
+            {getFrequentSubcategories(type, category).map((item) => {
+              const active = subcategory === item;
+
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setSubcategory(item)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-bold active:bg-[#f3eadb] ${
+                    active
+                      ? "border-[#8a6a3f] bg-[#f3eadb] text-[#24190f]"
+                      : "border-[#e6dcc8] bg-[#fbfaf7] text-[#5b4630]"
+                  }`}
+                >
+                  {item}
+                </button>
+              );
+            })}
           </div>
         </Field>
 
@@ -779,6 +811,10 @@ function SummaryTable({
   const diffLabel = type === "expense" ? "残り" : "差額";
   const totalLabel = type === "expense" ? "合計残り" : "合計差額";
 
+  function displayDiff(value: number) {
+    return type === "expense" ? `残り ${yen(value)}` : yen(value);
+  }
+
   return (
     <div className="rounded-2xl border border-[#e6dcc8] bg-white shadow-sm">
       <div className="flex items-center gap-2 border-b border-[#eee4d2] px-4 py-3 sm:px-5 sm:py-4">
@@ -809,7 +845,7 @@ function SummaryTable({
                     row.diff < 0 ? "text-[#b42318]" : "text-[#047857]"
                   }`}
                 >
-                  {yen(row.diff)}
+                  {displayDiff(row.diff)}
                 </td>
               </tr>
             ))}
@@ -824,7 +860,7 @@ function SummaryTable({
                   totalDiff < 0 ? "text-[#b42318]" : "text-[#047857]"
                 }`}
               >
-                {yen(totalDiff)}
+                {displayDiff(totalDiff)}
               </td>
             </tr>
           </tfoot>
@@ -843,7 +879,7 @@ function SummaryTable({
                     row.diff < 0 ? "text-[#b42318]" : "text-[#047857]"
                   }`}
                 >
-                  {yen(row.diff)}
+                  {displayDiff(row.diff)}
                 </p>
               </div>
             </div>
@@ -864,7 +900,7 @@ function SummaryTable({
           <div className="flex items-center justify-between font-black">
             <span>{totalLabel}</span>
             <span className={totalDiff < 0 ? "text-[#b42318]" : "text-[#047857]"}>
-              {yen(totalDiff)}
+              {displayDiff(totalDiff)}
             </span>
           </div>
         </div>

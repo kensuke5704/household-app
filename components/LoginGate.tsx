@@ -35,21 +35,21 @@ export default function LoginGate({ children }: { children: ReactNode }) {
   }
 
   return (
-    <main className="flex min-h-[100dvh] w-full items-center justify-center bg-[#f7f3eb] px-4 py-6 sm:px-6">
-      <section className="w-full max-w-[420px] rounded-[28px] border border-[#e6dcc8] bg-white px-5 py-7 shadow-sm sm:px-8 sm:py-9">
-        <div className="mb-6 text-center">
+    <main className="flex min-h-[100dvh] w-full items-center justify-center bg-[#f7f3eb] px-3 py-4 sm:px-6">
+      <section className="w-full max-w-[390px] rounded-[24px] border border-[#e6dcc8] bg-white px-4 py-6 shadow-sm sm:max-w-[420px] sm:rounded-[28px] sm:px-8 sm:py-9">
+        <div className="mb-5 text-center sm:mb-6">
           <p className="text-[11px] font-black tracking-[0.28em] text-[#8a6a3f]">
             HOUSEHOLD BOOK
           </p>
-          <h1 className="mt-2 text-2xl font-black text-[#24190f] sm:text-3xl">
+          <h1 className="mt-2 text-[26px] font-black leading-tight text-[#24190f] sm:text-3xl">
             ログイン
           </h1>
-          <p className="mt-3 text-sm font-bold leading-relaxed text-[#6b7280]">
+          <p className="mt-2 text-sm font-bold leading-relaxed text-[#6b7280] sm:mt-3">
             この家計簿アプリを開くにはパスワードを入力してください。
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <label className="block">
             <span className="mb-2 block text-xs font-bold text-[#6b7280]">
               パスワード
@@ -58,7 +58,7 @@ export default function LoginGate({ children }: { children: ReactNode }) {
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="h-14 w-full rounded-2xl border border-[#d7c7aa] bg-[#fbfaf7] px-4 text-base font-bold text-[#24190f] outline-none focus:border-[#8a6a3f] focus:bg-white"
+              className="h-[52px] min-h-[52px] w-full rounded-2xl border border-[#d7c7aa] bg-[#fbfaf7] px-4 text-base font-bold text-[#24190f] outline-none focus:border-[#8a6a3f] focus:bg-white sm:h-14"
               autoComplete="current-password"
               autoFocus
             />
@@ -72,7 +72,7 @@ export default function LoginGate({ children }: { children: ReactNode }) {
 
           <button
             type="submit"
-            className="h-14 w-full rounded-2xl bg-[#5b4630] text-base font-black text-white active:scale-[0.99]"
+            className="h-[52px] min-h-[52px] w-full rounded-2xl bg-[#5b4630] text-base font-black text-white active:scale-[0.99] sm:h-14"
           >
             ログイン
           </button>
