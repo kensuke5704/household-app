@@ -16,7 +16,7 @@ export default function LoginGate({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     const appPassword = process.env.NEXT_PUBLIC_APP_PASSWORD || DEFAULT_PASSWORD;
 
@@ -35,31 +35,49 @@ export default function LoginGate({ children }: { children: ReactNode }) {
   }
 
   return (
-    <main className="min-h-screen bg-[#f7f3eb] px-6 py-10 text-[#1f2933]">
-      <div className="mx-auto flex min-h-[calc(100vh-80px)] max-w-md items-center justify-center">
-        <form onSubmit={handleSubmit} className="w-full rounded-2xl border border-[#e6dcc8] bg-white p-8 shadow-sm">
-          <p className="text-xs font-bold tracking-[0.2em] text-[#8a6a3f]">HOUSEHOLD BOOK</p>
-          <h1 className="mt-2 text-2xl font-bold text-[#24190f]">ログイン</h1>
-          <p className="mt-2 text-sm leading-6 text-[#6b7280]">この家計簿アプリを開くにはパスワードを入力してください。</p>
+    <main className="flex min-h-[100dvh] w-full items-center justify-center bg-[#f7f3eb] px-4 py-6 sm:px-6">
+      <section className="w-full max-w-[420px] rounded-[28px] border border-[#e6dcc8] bg-white px-5 py-7 shadow-sm sm:px-8 sm:py-9">
+        <div className="mb-6 text-center">
+          <p className="text-[11px] font-black tracking-[0.28em] text-[#8a6a3f]">
+            HOUSEHOLD BOOK
+          </p>
+          <h1 className="mt-2 text-2xl font-black text-[#24190f] sm:text-3xl">
+            ログイン
+          </h1>
+          <p className="mt-3 text-sm font-bold leading-relaxed text-[#6b7280]">
+            この家計簿アプリを開くにはパスワードを入力してください。
+          </p>
+        </div>
 
-          <label className="mt-6 block">
-            <span className="mb-2 block text-sm font-bold text-[#4b5563]">パスワード</span>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <label className="block">
+            <span className="mb-2 block text-xs font-bold text-[#6b7280]">
+              パスワード
+            </span>
             <input
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="h-12 w-full rounded-lg border border-[#d7c7aa] bg-white px-3 text-base font-bold text-[#24190f] outline-none focus:border-[#8a6a3f]"
+              className="h-14 w-full rounded-2xl border border-[#d7c7aa] bg-[#fbfaf7] px-4 text-base font-bold text-[#24190f] outline-none focus:border-[#8a6a3f] focus:bg-white"
+              autoComplete="current-password"
               autoFocus
             />
           </label>
 
-          {error && <div className="mt-4 rounded-lg border border-[#f2b8b5] bg-[#fff4f2] px-4 py-3 text-sm font-bold text-[#b42318]">{error}</div>}
+          {error && (
+            <p className="rounded-2xl bg-[#fff0ed] px-4 py-3 text-sm font-bold text-[#b42318]">
+              {error}
+            </p>
+          )}
 
-          <button type="submit" className="mt-6 w-full rounded-lg bg-[#5b4630] py-3 text-sm font-bold text-white hover:bg-[#3f3020]">
+          <button
+            type="submit"
+            className="h-14 w-full rounded-2xl bg-[#5b4630] text-base font-black text-white active:scale-[0.99]"
+          >
             ログイン
           </button>
         </form>
-      </div>
+      </section>
     </main>
   );
 }
