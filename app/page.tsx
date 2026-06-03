@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { BarChart3, CalendarDays, Plus, RefreshCw, Trash2, WalletCards } from "lucide-react";
+import LoginGate from "@/components/LoginGate";
 import { expenseCategories, incomeCategories, recurringTemplates } from "@/lib/categories";
 import {
   addTransaction,
@@ -47,6 +48,7 @@ export default function Page() {
   const expenseRows = useMemo(() => makeSummaryRows(transactions, budgets, "expense"), [transactions, budgets]);
 
   return (
+    <LoginGate>
     <main className="min-h-screen bg-[#f7f3eb] text-[#1f2933]">
       <div className="mx-auto max-w-[1440px] px-8 py-8">
         <header className="mb-6 rounded-2xl border border-[#e6dcc8] bg-white px-6 py-5 shadow-sm">
@@ -340,4 +342,5 @@ function BudgetPanel({ month, budgets, onSaved, setMessage }: { month: string; b
       <button type="button" onClick={handleSave} className="mt-4 w-full rounded-lg bg-[#5b4630] py-3 text-sm font-bold text-white hover:bg-[#3f3020]">予算を保存</button>
     </div>
   );
+  </LoginGate>
 }
