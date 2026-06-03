@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { BarChart3, CalendarDays, Plus, RefreshCw, Trash2, WalletCards } from "lucide-react";
-import LoginGate from "@/components/LoginGate";
 import { expenseCategories, incomeCategories, recurringTemplates } from "@/lib/categories";
 import {
   addTransaction,
@@ -14,6 +13,7 @@ import {
 } from "@/lib/householdStore";
 import { currentMonthString, makeSummaryRows, todayString, totalByType, yen } from "@/lib/utils";
 import type { HouseholdBudget, HouseholdTransaction, SummaryRow, TransactionType } from "@/types/household";
+import LoginGate from "@/components/LoginGate";
 
 export default function Page() {
   const [month, setMonth] = useState(currentMonthString());
@@ -49,7 +49,7 @@ export default function Page() {
 
   return (
     <LoginGate>
-    <main className="min-h-screen bg-[#f7f3eb] text-[#1f2933]">
+      <main className="min-h-screen bg-[#f7f3eb] text-[#1f2933]">
       <div className="mx-auto max-w-[1440px] px-8 py-8">
         <header className="mb-6 rounded-2xl border border-[#e6dcc8] bg-white px-6 py-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -108,7 +108,8 @@ export default function Page() {
           </div>
         )}
       </div>
-    </main>
+      </main>
+    </LoginGate>
   );
 }
 
@@ -342,5 +343,4 @@ function BudgetPanel({ month, budgets, onSaved, setMessage }: { month: string; b
       <button type="button" onClick={handleSave} className="mt-4 w-full rounded-lg bg-[#5b4630] py-3 text-sm font-bold text-white hover:bg-[#3f3020]">予算を保存</button>
     </div>
   );
-  </LoginGate>
 }
