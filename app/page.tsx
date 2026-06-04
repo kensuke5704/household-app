@@ -238,6 +238,17 @@ function getMonthsFromSelectedToCurrent(selectedMonth: string) {
   return months;
 }
 
+function getMonthsFromSelectedForward(selectedMonth: string, count = 120) {
+  const [startYear, startMonth] = selectedMonth.split("-").map(Number);
+  const cursor = new Date(startYear, startMonth - 1, 1);
+  const months: string[] = [];
+  for (let i = 0; i < count; i += 1) {
+    months.push(formatLocalMonth(cursor));
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return months;
+}
+
 function getTemplateTransactions(
   templates: TemplateDraft[],
   globalEnabled: boolean,
@@ -866,14 +877,14 @@ function HistoryTab({ overviews }: { overviews: MonthOverview[] }) {
                               <p className="text-[11px] font-black text-[#6b7280]">{open ? "閉じる" : "内訳"}</p>
                             </div>
                           </button>
-                          <div className="grid grid-cols-2 gap-2 text-sm">
-                            <MiniStat label="収入予算" value={row.incomeBudget} />
-                            <MiniStat label="収入実績" value={row.incomeActual} tone="green" />
-                            <MiniStat label="支出予算" value={row.expenseBudget} />
-                            <MiniStat label="支出実績" value={row.expenseActual} tone="red" />
-                          </div>
                           {open && (
                             <div className="mt-3 space-y-3">
+                              <div className="grid grid-cols-2 gap-2 text-sm">
+                                <MiniStat label="収入予算" value={row.incomeBudget} />
+                                <MiniStat label="収入実績" value={row.incomeActual} tone="green" />
+                                <MiniStat label="支出予算" value={row.expenseBudget} />
+                                <MiniStat label="支出実績" value={row.expenseActual} tone="red" />
+                              </div>
                               <HistoryCategorySection title="収入内訳" rows={incomeRows} />
                               <HistoryCategorySection title="支出内訳" rows={expenseRows} />
                             </div>
@@ -1931,10 +1942,10 @@ function BudgetPanel({
 
   async function handleConfirmBudget() {
     const applyFollowing = window.confirm(
-      `${getMonthLabel(month)}以降の予算にも同じ変更を反映しますか？\n\nOK: 以降の月にも反映\nキャンセル: この月だけ反映`,
+      `${getMonthLabel(month)}以降の予算にも同じ変更を反映しますか？`,
     );
     const targetMonths = applyFollowing
-      ? getMonthsFromSelectedToCurrent(month)
+      ? getMonthsFromSelectedForward(month)
       : [month];
     const nextBudgets = budgets.map((b) => ({
       ...b,
@@ -1967,9 +1978,19 @@ function BudgetPanel({
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-[#e6dcc8] bg-white p-4 shadow-sm sm:p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <WalletCards size={18} className="text-[#8a6a3f]" />
-          <h2 className="text-lg font-black text-[#24190f]">月別予算</h2>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <WalletCards size={18} className="shrink-0 text-[#8a6a3f]" />
+            <h2 className="truncate text-lg font-black text-[#24190f]">月別予算</h2>
+          </div>
+          <button
+            type="button"
+            onClick={handleConfirmBudget}
+            disabled={saving}
+            className="shrink-0 rounded-xl bg-[#5b4630] px-3 py-2 text-xs font-black text-white shadow-sm disabled:opacity-50 sm:px-4 sm:text-sm"
+          >
+            {saving ? "確定中..." : "予算を確定"}
+          </button>
         </div>
         <BudgetGroup
           title="収入"
@@ -1983,17 +2004,6 @@ function BudgetPanel({
           drafts={drafts}
           onChangeBudget={handleChangeBudget}
         />
-      </div>
-
-      <div className="sticky bottom-[84px] z-40 rounded-2xl border border-[#d7c7aa] bg-white/95 p-3 shadow-lg backdrop-blur">
-        <button
-          type="button"
-          onClick={handleConfirmBudget}
-          disabled={saving}
-          className="h-12 w-full rounded-xl bg-[#5b4630] text-sm font-black text-white shadow-sm disabled:opacity-50"
-        >
-          {saving ? "確定中..." : "予算を確定"}
-        </button>
       </div>
     </div>
   );
