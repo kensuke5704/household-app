@@ -103,35 +103,6 @@ export async function addTransactions(inputs: Array<Omit<HouseholdTransaction, "
   writeLocal(STORAGE_TRANSACTIONS, [...next, ...rows]);
 }
 
-
-export async function updateTransaction(
-  id: string,
-  input: Omit<HouseholdTransaction, "id" | "created_at">
-) {
-  if (isSupabaseEnabled && supabase) {
-    const { error } = await supabase
-      .from("household_transactions")
-      .update({
-        date: input.date,
-        type: input.type,
-        category: input.category,
-        subcategory: input.subcategory || null,
-        amount: input.amount,
-        memo: input.memo || null,
-      })
-      .eq("id", id)
-      .eq("user_key", USER_KEY);
-    if (error) throw error;
-    return;
-  }
-
-  const rows = readLocal<HouseholdTransaction[]>(STORAGE_TRANSACTIONS, []);
-  writeLocal(
-    STORAGE_TRANSACTIONS,
-    rows.map((row) => (row.id === id ? { ...row, ...input } : row))
-  );
-}
-
 export async function deleteTransaction(id: string) {
   if (isSupabaseEnabled && supabase) {
     const { error } = await supabase.from("household_transactions").delete().eq("id", id).eq("user_key", USER_KEY);
@@ -190,4 +161,29 @@ function mergeDefaultBudgets(month: string, saved: HouseholdBudget[]) {
     category,
     budget: byCategory.get(category)?.budget ?? budget,
   }));
+}
+
+export async function updateTransaction(id: string, input: Partial<Omit<HouseholdTransaction, "id" | "created_at">>) {
+  if (isSupabaseEnabled && supabase) {
+    const { error } = await supabase
+      .from("household_transactions")
+      .update({
+        ...(input.date !== undefined ? { date: input.date } : {}),
+        ...(input.type !== undefined ? { type: input.type } : {}),
+        ...(input.category !== undefined ? { category: input.category } : {}),
+        ...(input.subcategory !== undefined ? { subcategory: input.subcategory || null } : {}),
+        ...(input.amount !== undefined ? { amount: input.amount } : {}),
+        ...(input.memo !== undefined ? { memo: input.memo || null } : {}),
+      })
+      .eq("id", id)
+      .eq("user_key", USER_KEY);
+    if (error) throw error;
+    return;
+  }
+
+  const rows = readLocal<HouseholdTransaction[]>(STORAGE_TRANSACTIONS, []);
+  writeLocal(
+    STORAGE_TRANSACTIONS,
+    rows.map((row) => (row.id === id ? { ...row, ...input } : row)),
+  );
 }

@@ -396,9 +396,9 @@ export default function Page() {
       const next = {
         ...current,
         [month]: {
-          month,
           ...(current[month] || {}),
           ...patch,
+          month,
         },
       };
       writeConfirmedMonthRecords(next);
