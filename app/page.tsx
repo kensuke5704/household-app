@@ -780,6 +780,46 @@ function HistoryTab({ overviews }: { overviews: MonthOverview[] }) {
   );
 }
 
+
+function HistoryCategorySection({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: CategoryOverview[];
+}) {
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-xl border border-[#f0e7d8] bg-[#fbfaf7] p-3">
+        <p className="text-sm font-black text-[#24190f]">{title}</p>
+        <p className="mt-2 text-xs font-bold text-[#8a7a68]">内訳はありません</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-[#f0e7d8] bg-[#fbfaf7] p-3">
+      <p className="mb-2 text-sm font-black text-[#24190f]">{title}</p>
+      <div className="space-y-2">
+        {rows.map((row) => (
+          <div key={`${row.type}-${row.category}`} className="rounded-lg bg-white p-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="min-w-0 truncate text-sm font-black text-[#24190f]">{row.category}</p>
+              <p className={`shrink-0 text-sm font-black ${row.diff < 0 ? "text-[#b42318]" : "text-[#047857]"}`}>
+                {signedYen(row.diff)}
+              </p>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <MiniStat label="予算" value={row.budget} />
+              <MiniStat label="実績" value={row.actual} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function MonthPicker({
   month,
   setMonth,
