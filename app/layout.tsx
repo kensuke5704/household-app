@@ -2,17 +2,6 @@ import type { Metadata } from "next";
 import "./globals.css";
 import PwaRegister from "@/components/PwaRegister";
 
-export const metadata: Metadata = {
-  title: "Household App",
-  description: "Household management app",
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    title: "Household App",
-    statusBarStyle: "default",
-  },
-};
-
 export default function RootLayout({
   children,
 }: {
