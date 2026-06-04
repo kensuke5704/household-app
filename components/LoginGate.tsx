@@ -180,27 +180,15 @@ export default function LoginGate({ children }: { children: ReactNode }) {
   }
 
   if (isUnlocked) {
-    return (
-      <>
-        <div className="fixed right-3 top-3 z-[70] flex max-w-[calc(100vw-24px)] items-center gap-2 rounded-full border border-[#e6dcc8] bg-white/90 px-3 py-2 text-[11px] font-black text-[#6b7280] shadow-sm backdrop-blur">
-          <span className="max-w-[150px] truncate">{activeId}</span>
-          <button type="button" onClick={handleLogout} className="shrink-0 text-[#5b4630]">
-            ログアウト
-          </button>
-        </div>
-        {children}
-      </>
-    );
+    return <>{children}</>;
   }
 
   const isLogin = mode === "login";
 
   return (
-    <main className="min-h-[100dvh] w-full overflow-hidden bg-[#f7f3eb] text-[#24190f]">
-      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[430px] flex-col justify-center px-5 py-[max(22px,env(safe-area-inset-bottom))]">
-        <div className="pointer-events-none absolute left-1/2 top-[-140px] h-[300px] w-[300px] -translate-x-1/2 rounded-full bg-[#eadfca] opacity-70 blur-3xl" />
-
-        <section className="relative rounded-[30px] border border-[#e6dcc8] bg-white/95 p-4 shadow-[0_18px_50px_rgba(91,70,48,0.12)] backdrop-blur">
+    <main className="min-h-[100dvh] w-full bg-[#f7f3eb] px-3 py-4 text-[#24190f]">
+      <div className="mx-auto flex min-h-[calc(100dvh-32px)] w-full max-w-md flex-col justify-center">
+        <section className="rounded-[28px] border border-[#e6dcc8] bg-white p-4 shadow-sm">
           <div className="mb-5 grid grid-cols-2 rounded-[20px] bg-[#f4efe5] p-1">
             <button
               type="button"
@@ -233,7 +221,7 @@ export default function LoginGate({ children }: { children: ReactNode }) {
               type="text"
               value={userId}
               onChange={(event) => setUserId(event.target.value)}
-              className="h-14 w-full rounded-[20px] border border-[#d7c7aa] bg-[#fbfaf7] px-4 text-base font-bold text-[#24190f] outline-none transition placeholder:text-[#c1b6a6] focus:border-[#8a6a3f] focus:bg-white focus:ring-4 focus:ring-[#eadfca]"
+              className="h-14 w-full rounded-2xl border border-[#d7c7aa] bg-[#fbfaf7] px-4 text-base font-bold text-[#24190f] outline-none transition placeholder:text-[#c1b6a6] focus:border-[#8a6a3f] focus:bg-white focus:ring-4 focus:ring-[#eadfca]"
               autoComplete="username"
               inputMode="text"
               placeholder="ID"
@@ -249,7 +237,7 @@ export default function LoginGate({ children }: { children: ReactNode }) {
             <button
               type="submit"
               disabled={loading}
-              className="h-14 w-full rounded-[20px] bg-[#5b4630] text-base font-black text-white shadow-[0_12px_24px_rgba(91,70,48,0.22)] transition active:scale-[0.99] disabled:opacity-60"
+              className="h-14 w-full rounded-2xl bg-[#5b4630] text-base font-black text-white shadow-sm transition active:scale-[0.99] disabled:opacity-60"
             >
               {loading ? "処理中..." : isLogin ? "ログイン" : "登録"}
             </button>

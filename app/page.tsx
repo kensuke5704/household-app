@@ -6,9 +6,11 @@ import {
   CalendarDays,
   Home,
   ListChecks,
+  LogOut,
   Pencil,
   Plus,
   Trash2,
+  UserRound,
   WalletCards,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -40,7 +42,7 @@ import type {
 } from "@/types/household";
 import LoginGate from "@/components/LoginGate";
 
-type AppTab = "home" | "input" | "budget" | "history";
+type AppTab = "home" | "input" | "budget" | "history" | "profile";
 
 type TemplateDraft = {
   id: string;
@@ -119,6 +121,7 @@ const tabs: Array<{ key: AppTab; label: string; icon: LucideIcon }> = [
   { key: "input", label: "入力", icon: Plus },
   { key: "budget", label: "予算", icon: WalletCards },
   { key: "history", label: "履歴", icon: CalendarDays },
+  { key: "profile", label: "プロフィール", icon: UserRound },
 ];
 
 function formatNumber(value: number | string) {
@@ -480,7 +483,7 @@ export default function Page() {
         className="min-h-screen bg-[#f7f3eb] px-3 pb-24 pt-4 sm:px-6 lg:px-8 lg:py-8"
       >
         <div className="mx-auto w-full max-w-7xl">
-          {activeTab !== "history" && (
+          {activeTab !== "history" && activeTab !== "profile" && (
             <header className="mb-4 rounded-[24px] border border-[#e6dcc8] bg-white p-3 shadow-sm sm:mb-6 sm:rounded-[28px] sm:p-4">
               <MonthHeader month={month} setMonth={setMonth} />
             </header>
@@ -538,6 +541,8 @@ export default function Page() {
               {activeTab === "history" && (
                 <HistoryTab overviews={monthOverviews} />
               )}
+
+              {activeTab === "profile" && <ProfileTab />}
             </div>
           )}
         </div>
@@ -665,7 +670,7 @@ function TabNav({
   onChange: (tab: AppTab) => void;
 }) {
   return (
-    <nav className="fixed bottom-3 left-3 right-3 z-50 mx-auto grid max-w-md grid-cols-4 gap-1 rounded-2xl border border-[#e6dcc8] bg-white/95 p-1 shadow-lg backdrop-blur lg:bottom-6">
+    <nav className="fixed bottom-3 left-3 right-3 z-50 mx-auto grid max-w-md grid-cols-5 gap-1 rounded-2xl border border-[#e6dcc8] bg-white/95 p-1 shadow-lg backdrop-blur lg:bottom-6">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const active = activeTab === tab.key;
@@ -686,6 +691,47 @@ function TabNav({
         );
       })}
     </nav>
+  );
+}
+
+
+function ProfileTab() {
+  const [activeId, setActiveId] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setActiveId(window.localStorage.getItem("household.auth.id") || window.localStorage.getItem("household.auth.email") || "");
+  }, []);
+
+  function handleLogout() {
+    if (typeof window === "undefined") return;
+    window.localStorage.removeItem("household.auth.userKey");
+    window.localStorage.removeItem("household.auth.id");
+    window.localStorage.removeItem("household.auth.email");
+    window.location.reload();
+  }
+
+  return (
+    <section className="rounded-[28px] border border-[#e6dcc8] bg-white p-4 shadow-sm sm:p-5">
+      <div className="mb-5 flex items-center gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f3eadb] text-[#5b4630]">
+          <UserRound size={22} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-black text-[#8a7b68]">ログイン中</p>
+          <p className="truncate text-xl font-black text-[#24190f]">{activeId || "未設定"}</p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={handleLogout}
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#5b4630] text-sm font-black text-white shadow-sm active:scale-[0.99]"
+      >
+        <LogOut size={17} />
+        ログアウト
+      </button>
+    </section>
   );
 }
 
