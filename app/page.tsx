@@ -185,25 +185,38 @@ function getMonthLabel(month: string) {
   return `${year}年${Number(m)}月`;
 }
 
+function pad2(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function formatLocalDate(date: Date) {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+function formatLocalMonth(date: Date) {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
+}
+
 function shiftMonth(month: string, offset: number) {
-  const date = new Date(`${month}-01T00:00:00`);
-  date.setMonth(date.getMonth() + offset);
-  return date.toISOString().slice(0, 7);
+  const [year, m] = month.split("-").map(Number);
+  const date = new Date(year, m - 1 + offset, 1);
+  return formatLocalMonth(date);
 }
 
 function shiftDate(date: string, offset: number) {
-  const next = new Date(`${date}T00:00:00`);
-  next.setDate(next.getDate() + offset);
-  return next.toISOString().slice(0, 10);
+  const [year, month, day] = date.split("-").map(Number);
+  const next = new Date(year, month - 1, day + offset);
+  return formatLocalDate(next);
 }
 
 function getMonthsFromJan2026() {
-  const start = new Date("2026-01-01T00:00:00");
-  const end = new Date(`${currentMonthString()}-01T00:00:00`);
+  const start = new Date(2026, 0, 1);
+  const [endYear, endMonth] = currentMonthString().split("-").map(Number);
+  const end = new Date(endYear, endMonth - 1, 1);
   const months: string[] = [];
   const cursor = new Date(start);
   while (cursor <= end) {
-    months.push(cursor.toISOString().slice(0, 7));
+    months.push(formatLocalMonth(cursor));
     cursor.setMonth(cursor.getMonth() + 1);
   }
   return months.reverse();
