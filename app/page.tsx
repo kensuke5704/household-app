@@ -69,11 +69,26 @@ type MonthOverview = {
   categoryRows: CategoryOverview[];
 };
 
+type ConfirmOptions = {
+  title: string;
+  message?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+};
+
+type ConfirmDialogState = (ConfirmOptions & {
+  onResolve: (confirmed: boolean) => void;
+}) | null;
+
+type ConfirmFn = (options: ConfirmOptions) => Promise<boolean>;
+
 const TEMPLATE_STORAGE_KEY = "household.recurringTemplates.v2";
 const LEGACY_TEMPLATE_STORAGE_KEY = "household.recurringTemplates.v1";
 const TEMPLATE_GLOBAL_ENABLED_KEY =
   "household.recurringTemplates.globalEnabled.v1";
 const QUICK_SUBCATEGORY_STORAGE_KEY = "household.quickSubcategories.v1";
+const HISTORY_OPEN_YEARS_STORAGE_KEY = "household.historyOpenYears.v1";
+const HISTORY_OPEN_MONTHS_STORAGE_KEY = "household.historyOpenMonths.v1";
 
 const frequentSubcategories: Record<TransactionType, string[]> = {
   expense: [
@@ -281,6 +296,7 @@ export default function Page() {
   const [monthOverviews, setMonthOverviews] = useState<MonthOverview[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>(null);
   const touchStartY = useRef<number | null>(null);
 
   async function reload(options?: {
@@ -388,6 +404,17 @@ export default function Page() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month, transactions, budgets]);
 
+  function requestConfirm(options: ConfirmOptions) {
+    return new Promise<boolean>((resolve) => {
+      setConfirmDialog({ ...options, onResolve: resolve });
+    });
+  }
+
+  function closeConfirmDialog(confirmed: boolean) {
+    confirmDialog?.onResolve(confirmed);
+    setConfirmDialog(null);
+  }
+
   async function refreshWithoutJump() {
     await reload({ showLoading: false, keepScroll: true });
   }
@@ -480,6 +507,7 @@ export default function Page() {
                   setTemplatesEnabled={setTemplatesEnabled}
                   onChanged={refreshWithoutJump}
                   setMessage={setMessage}
+                  requestConfirm={requestConfirm}
                 />
               )}
 
@@ -491,6 +519,7 @@ export default function Page() {
                   expenseRows={expenseRows}
                   onSaved={refreshWithoutJump}
                   setMessage={setMessage}
+                  requestConfirm={requestConfirm}
                 />
               )}
 
@@ -500,8 +529,59 @@ export default function Page() {
             </div>
           )}
         </div>
+        {confirmDialog && (
+          <ConfirmDialog
+            title={confirmDialog.title}
+            message={confirmDialog.message}
+            confirmLabel={confirmDialog.confirmLabel}
+            cancelLabel={confirmDialog.cancelLabel}
+            onConfirm={() => closeConfirmDialog(true)}
+            onCancel={() => closeConfirmDialog(false)}
+          />
+        )}
       </main>
     </LoginGate>
+  );
+}
+
+function ConfirmDialog({
+  title,
+  message,
+  confirmLabel = "OK",
+  cancelLabel = "キャンセル",
+  onConfirm,
+  onCancel,
+}: ConfirmOptions & {
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/30 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-[24px] border border-[#e6dcc8] bg-white p-5 shadow-xl">
+        <h2 className="text-lg font-black text-[#24190f]">{title}</h2>
+        {message && (
+          <p className="mt-2 text-sm font-bold leading-relaxed text-[#6b7280]">
+            {message}
+          </p>
+        )}
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-xl border border-[#d7c7aa] bg-white px-4 py-3 text-sm font-black text-[#5b4630] active:bg-[#f3eadb]"
+          >
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="rounded-xl bg-[#5b4630] px-4 py-3 text-sm font-black text-white active:scale-[0.99]"
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -646,6 +726,7 @@ function InputTab({
   setTemplatesEnabled,
   onChanged,
   setMessage,
+  requestConfirm,
 }: {
   transactions: HouseholdTransaction[];
   templates: TemplateDraft[];
@@ -654,6 +735,7 @@ function InputTab({
   setTemplatesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
   onChanged: () => Promise<void>;
   setMessage: (value: string) => void;
+  requestConfirm: ConfirmFn;
 }) {
   const [selectedDate, setSelectedDate] = useState(todayString());
 
@@ -669,6 +751,7 @@ function InputTab({
           setTemplatesEnabled={setTemplatesEnabled}
           onAdded={onChanged}
           setMessage={setMessage}
+          requestConfirm={requestConfirm}
         />
       </div>
       <HistoryTable
@@ -687,6 +770,7 @@ function BudgetTab({
   expenseRows,
   onSaved,
   setMessage,
+  requestConfirm,
 }: {
   month: string;
   budgets: HouseholdBudget[];
@@ -694,6 +778,7 @@ function BudgetTab({
   expenseRows: SummaryRow[];
   onSaved: () => Promise<void>;
   setMessage: (value: string) => void;
+  requestConfirm: ConfirmFn;
 }) {
   return (
     <div className="space-y-4">
@@ -703,6 +788,7 @@ function BudgetTab({
         budgets={budgets}
         onSaved={onSaved}
         setMessage={setMessage}
+        requestConfirm={requestConfirm}
       />
     </div>
   );
@@ -804,8 +890,30 @@ function BudgetCategoryDonut({
 }
 
 function HistoryTab({ overviews }: { overviews: MonthOverview[] }) {
-  const [openYears, setOpenYears] = useState<Record<string, boolean>>({});
-  const [openMonths, setOpenMonths] = useState<Record<string, boolean>>({});
+  const [openYears, setOpenYears] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      return JSON.parse(window.localStorage.getItem(HISTORY_OPEN_YEARS_STORAGE_KEY) || "{}") as Record<string, boolean>;
+    } catch {
+      return {};
+    }
+  });
+  const [openMonths, setOpenMonths] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      return JSON.parse(window.localStorage.getItem(HISTORY_OPEN_MONTHS_STORAGE_KEY) || "{}") as Record<string, boolean>;
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem(HISTORY_OPEN_YEARS_STORAGE_KEY, JSON.stringify(openYears));
+  }, [openYears]);
+
+  useEffect(() => {
+    window.localStorage.setItem(HISTORY_OPEN_MONTHS_STORAGE_KEY, JSON.stringify(openMonths));
+  }, [openMonths]);
 
   const grouped = useMemo(() => {
     return overviews.reduce<Record<string, MonthOverview[]>>((acc, row) => {
@@ -867,18 +975,18 @@ function HistoryTab({ overviews }: { overviews: MonthOverview[] }) {
                       const incomeRows = row.categoryRows.filter((item) => item.type === "income" && (item.actual > 0 || item.budget > 0));
                       const expenseRows = row.categoryRows.filter((item) => item.type === "expense" && (item.actual > 0 || item.budget > 0));
                       return (
-                        <div key={row.month} className="rounded-xl border border-[#f0e7d8] bg-white p-3">
-                          <button type="button" onClick={() => toggleMonth(row.month)} className="mb-3 flex w-full items-center justify-between gap-3 text-left">
-                            <p className="font-black text-[#24190f]">{getMonthLabel(row.month)}</p>
+                        <div key={row.month} className="rounded-xl border border-[#f0e7d8] bg-white px-3 py-2">
+                          <button type="button" onClick={() => toggleMonth(row.month)} className="flex w-full items-center justify-between gap-3 text-left">
+                            <p className="text-sm font-black text-[#24190f]">{getMonthLabel(row.month)}</p>
                             <div className="text-right">
-                              <p className={`text-lg font-black ${row.balance < 0 ? "text-[#b42318]" : "text-[#047857]"}`}>
+                              <p className={`text-base font-black ${row.balance < 0 ? "text-[#b42318]" : "text-[#047857]"}`}>
                                 {signedYen(row.balance)}
                               </p>
-                              <p className="text-[11px] font-black text-[#6b7280]">{open ? "閉じる" : "内訳"}</p>
+                              <p className="text-[10px] font-black text-[#6b7280]">{open ? "閉じる" : "内訳"}</p>
                             </div>
                           </button>
                           {open && (
-                            <div className="mt-3 space-y-3">
+                            <div className="mt-2 space-y-3 border-t border-[#f0e7d8] pt-2">
                               <div className="grid grid-cols-2 gap-2 text-sm">
                                 <MiniStat label="収入予算" value={row.incomeBudget} />
                                 <MiniStat label="収入実績" value={row.incomeActual} tone="green" />
@@ -1040,7 +1148,7 @@ function BudgetActualGraphCard({
           maxValue={maxValue}
         />
         <CenterBarRow
-          label="実費"
+          label="実績"
           leftLabel="収入実績"
           rightLabel="支出実績"
           leftValue={incomeActual}
@@ -1319,6 +1427,7 @@ function FixedTemplatePanel({
   setTemplatesEnabled,
   onAdded,
   setMessage,
+  requestConfirm,
 }: {
   date: string;
   templates: TemplateDraft[];
@@ -1327,6 +1436,7 @@ function FixedTemplatePanel({
   setTemplatesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
   onAdded: () => Promise<void>;
   setMessage: (value: string) => void;
+  requestConfirm: ConfirmFn;
 }) {
   const enabledTemplates = templates.filter((item) => item.enabled);
   const activeExpenseTotal = enabledTemplates
@@ -1357,10 +1467,16 @@ function FixedTemplatePanel({
     ]);
   }
 
-  function deleteTemplateRow(id: string) {
+  async function deleteTemplateRow(id: string) {
     const target = templates.find((item) => item.id === id);
     const label = target?.subcategory || target?.category || "この固定費";
-    if (!window.confirm(`${label}を削除しますか？`)) return;
+    const confirmed = await requestConfirm({
+      title: "固定費を削除しますか？",
+      message: `${label}を削除します。`,
+      confirmLabel: "削除",
+      cancelLabel: "キャンセル",
+    });
+    if (!confirmed) return;
     setTemplates((current) => current.filter((item) => item.id !== id));
   }
 
@@ -1915,11 +2031,13 @@ function BudgetPanel({
   budgets,
   onSaved,
   setMessage,
+  requestConfirm,
 }: {
   month: string;
   budgets: HouseholdBudget[];
   onSaved: () => Promise<void>;
   setMessage: (value: string) => void;
+  requestConfirm: ConfirmFn;
 }) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -1941,9 +2059,12 @@ function BudgetPanel({
   }
 
   async function handleConfirmBudget() {
-    const applyFollowing = window.confirm(
-      `${getMonthLabel(month)}以降の予算にも同じ変更を反映しますか？`,
-    );
+    const applyFollowing = await requestConfirm({
+      title: "以降の月にも反映しますか？",
+      message: `${getMonthLabel(month)}以降の予算にも同じ変更を反映します。`,
+      confirmLabel: "以降にも反映",
+      cancelLabel: "この月のみ",
+    });
     const targetMonths = applyFollowing
       ? getMonthsFromSelectedForward(month)
       : [month];
