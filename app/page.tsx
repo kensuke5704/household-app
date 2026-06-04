@@ -51,6 +51,14 @@ type TemplateDraft = {
   enabled: boolean;
 };
 
+type CategoryOverview = {
+  type: TransactionType;
+  category: string;
+  budget: number;
+  actual: number;
+  diff: number;
+};
+
 type MonthOverview = {
   month: string;
   incomeBudget: number;
@@ -58,6 +66,7 @@ type MonthOverview = {
   incomeActual: number;
   expenseActual: number;
   balance: number;
+  categoryRows: CategoryOverview[];
 };
 
 type ConfirmedMonthRecord = {
@@ -299,6 +308,22 @@ export default function Page() {
           const finalExpenseBudget = confirmed?.expenseBudget ?? expenseBudget;
           const incomeActual = confirmed?.incomeActual ?? liveIncomeActual;
           const expenseActual = confirmed?.expenseActual ?? liveExpenseActual;
+          const categoryRows: CategoryOverview[] = [
+            ...makeSummaryRows(actualTransactions, monthBudgets, "income").map((row) => ({
+              type: "income" as TransactionType,
+              category: row.category,
+              budget: row.budget,
+              actual: row.actual,
+              diff: row.diff,
+            })),
+            ...makeSummaryRows(actualTransactions, monthBudgets, "expense").map((row) => ({
+              type: "expense" as TransactionType,
+              category: row.category,
+              budget: row.budget,
+              actual: row.actual,
+              diff: row.diff,
+            })),
+          ];
           return {
             month: targetMonth,
             incomeBudget: finalIncomeBudget,
@@ -306,6 +331,7 @@ export default function Page() {
             incomeActual,
             expenseActual,
             balance: incomeActual - expenseActual,
+            categoryRows,
           };
         }),
       );
@@ -708,6 +734,12 @@ function BudgetDonut({
 }
 
 function HistoryTab({ overviews }: { overviews: MonthOverview[] }) {
+  const [openMonths, setOpenMonths] = useState<Record<string, boolean>>({});
+
+  function toggleMonth(month: string) {
+    setOpenMonths((current) => ({ ...current, [month]: !current[month] }));
+  }
+
   return (
     <div className="rounded-2xl border border-[#e6dcc8] bg-white shadow-sm">
       <div className="flex items-center gap-2 border-b border-[#eee4d2] px-4 py-3 sm:px-5 sm:py-4">
@@ -757,35 +789,97 @@ function HistoryTab({ overviews }: { overviews: MonthOverview[] }) {
       </div>
 
       <div className="space-y-3 p-3 lg:hidden">
-        {overviews.map((row) => (
-          <div
-            key={row.month}
-            className="rounded-xl border border-[#f0e7d8] bg-[#fbfaf7] p-3"
-          >
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <p className="font-black text-[#24190f]">
-                {getMonthLabel(row.month)}
-              </p>
-              <p
-                className={`text-lg font-black ${row.balance < 0 ? "text-[#b42318]" : "text-[#047857]"}`}
+        {overviews.map((row) => {
+          const open = openMonths[row.month] ?? row.month === currentMonthString();
+          const incomeRows = row.categoryRows.filter((item) => item.type === "income" && (item.actual > 0 || item.budget > 0));
+          const expenseRows = row.categoryRows.filter((item) => item.type === "expense" && (item.actual > 0 || item.budget > 0));
+          return (
+            <div
+              key={row.month}
+              className="rounded-xl border border-[#f0e7d8] bg-[#fbfaf7] p-3"
+            >
+              <button
+                type="button"
+                onClick={() => toggleMonth(row.month)}
+                className="mb-3 flex w-full items-center justify-between gap-3 text-left"
               >
-                {signedYen(row.balance)}
+                <p className="font-black text-[#24190f]">
+                  {getMonthLabel(row.month)}
+                </p>
+                <div className="text-right">
+                  <p
+                    className={`text-lg font-black ${row.balance < 0 ? "text-[#b42318]" : "text-[#047857]"}`}
+                  >
+                    {signedYen(row.balance)}
+                  </p>
+                  <p className="text-[11px] font-black text-[#6b7280]">
+                    {open ? "閉じる" : "内訳を見る"}
+                  </p>
+                </div>
+              </button>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <MiniStat label="収入予算" value={row.incomeBudget} />
+                <MiniStat
+                  label="収入実績"
+                  value={row.incomeActual}
+                  tone="green"
+                />
+                <MiniStat label="支出予算" value={row.expenseBudget} />
+                <MiniStat label="支出実績" value={row.expenseActual} tone="red" />
+              </div>
+
+              {open && (
+                <div className="mt-3 space-y-3">
+                  <HistoryCategorySection title="収入内訳" rows={incomeRows} />
+                  <HistoryCategorySection title="支出内訳" rows={expenseRows} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function HistoryCategorySection({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: CategoryOverview[];
+}) {
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="rounded-xl border border-[#eee4d2] bg-white p-3">
+      <h3 className="mb-2 text-sm font-black text-[#5b4630]">{title}</h3>
+      <div className="space-y-2">
+        {rows.map((row) => (
+          <div
+            key={`${row.type}-${row.category}`}
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-sm"
+          >
+            <div className="min-w-0">
+              <p className="truncate font-bold text-[#24190f]">{row.category}</p>
+              <p className="text-[11px] font-bold text-[#6b7280]">
+                予算 {yen(row.budget)}
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <MiniStat label="収入予算" value={row.incomeBudget} />
-              <MiniStat
-                label="収入実績"
-                value={row.incomeActual}
-                tone="green"
-              />
-              <MiniStat label="支出予算" value={row.expenseBudget} />
-              <MiniStat label="支出実績" value={row.expenseActual} tone="red" />
+            <div className="text-right">
+              <p className={`font-black ${row.type === "income" ? "text-[#047857]" : "text-[#b42318]"}`}>
+                {yen(row.actual)}
+              </p>
+              <p className={`text-[11px] font-black ${row.diff < 0 ? "text-[#b42318]" : "text-[#047857]"}`}>
+                {signedYen(row.diff)}
+              </p>
             </div>
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 
