@@ -5,7 +5,18 @@ import type { HouseholdBudget, HouseholdTransaction } from "@/types/household";
 
 const STORAGE_TRANSACTIONS = "household.transactions.v1";
 const STORAGE_BUDGETS = "household.budgets.v1";
-const USER_KEY = "personal";
+const ACTIVE_USER_KEY = "household.auth.userKey";
+const FALLBACK_USER_KEY = "personal";
+
+function getUserKey() {
+  if (typeof window === "undefined") return FALLBACK_USER_KEY;
+  return window.localStorage.getItem(ACTIVE_USER_KEY) || FALLBACK_USER_KEY;
+}
+
+function scopedLocalKey(key: string) {
+  return `${key}.${getUserKey()}`;
+}
+
 
 function makeId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -14,7 +25,7 @@ function makeId() {
 
 function readLocal<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
-  const raw = localStorage.getItem(key);
+  const raw = localStorage.getItem(scopedLocalKey(key));
   if (!raw) return fallback;
   try {
     return JSON.parse(raw) as T;
@@ -25,7 +36,7 @@ function readLocal<T>(key: string, fallback: T): T {
 
 function writeLocal<T>(key: string, value: T) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(key, JSON.stringify(value));
+  localStorage.setItem(scopedLocalKey(key), JSON.stringify(value));
 }
 
 function normalizeTransaction(row: any): HouseholdTransaction {
@@ -47,7 +58,7 @@ export async function getTransactions(month: string): Promise<HouseholdTransacti
     const { data, error } = await supabase
       .from("household_transactions")
       .select("id,date,type,category,subcategory,amount,memo,created_at")
-      .eq("user_key", USER_KEY)
+      .eq("user_key", getUserKey())
       .gte("date", start)
       .lt("date", end)
       .order("date", { ascending: false })
@@ -64,7 +75,7 @@ export async function getTransactions(month: string): Promise<HouseholdTransacti
 export async function addTransaction(input: Omit<HouseholdTransaction, "id" | "created_at">) {
   if (isSupabaseEnabled && supabase) {
     const { error } = await supabase.from("household_transactions").insert({
-      user_key: USER_KEY,
+      user_key: getUserKey(),
       date: input.date,
       type: input.type,
       category: input.category,
@@ -85,7 +96,7 @@ export async function addTransactions(inputs: Array<Omit<HouseholdTransaction, "
   if (isSupabaseEnabled && supabase) {
     const { error } = await supabase.from("household_transactions").insert(
       inputs.map((input) => ({
-        user_key: USER_KEY,
+        user_key: getUserKey(),
         date: input.date,
         type: input.type,
         category: input.category,
@@ -105,7 +116,7 @@ export async function addTransactions(inputs: Array<Omit<HouseholdTransaction, "
 
 export async function deleteTransaction(id: string) {
   if (isSupabaseEnabled && supabase) {
-    const { error } = await supabase.from("household_transactions").delete().eq("id", id).eq("user_key", USER_KEY);
+    const { error } = await supabase.from("household_transactions").delete().eq("id", id).eq("user_key", getUserKey());
     if (error) throw error;
     return;
   }
@@ -122,7 +133,7 @@ export async function getBudgets(month: string): Promise<HouseholdBudget[]> {
     const { data, error } = await supabase
       .from("household_budgets")
       .select("id,month,category,budget")
-      .eq("user_key", USER_KEY)
+      .eq("user_key", getUserKey())
       .eq("month", month);
     if (error) throw error;
     const saved = (data ?? []) as HouseholdBudget[];
@@ -137,7 +148,7 @@ export async function saveBudgets(month: string, budgets: HouseholdBudget[]) {
   if (isSupabaseEnabled && supabase) {
     const { error } = await supabase.from("household_budgets").upsert(
       budgets.map((budget) => ({
-        user_key: USER_KEY,
+        user_key: getUserKey(),
         month,
         category: budget.category,
         budget: budget.budget,
@@ -176,7 +187,7 @@ export async function updateTransaction(id: string, input: Partial<Omit<Househol
         ...(input.memo !== undefined ? { memo: input.memo || null } : {}),
       })
       .eq("id", id)
-      .eq("user_key", USER_KEY);
+      .eq("user_key", getUserKey());
     if (error) throw error;
     return;
   }

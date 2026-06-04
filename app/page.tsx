@@ -89,6 +89,16 @@ const TEMPLATE_GLOBAL_ENABLED_KEY =
 const QUICK_SUBCATEGORY_STORAGE_KEY = "household.quickSubcategories.v1";
 const HISTORY_OPEN_YEARS_STORAGE_KEY = "household.historyOpenYears.v1";
 const HISTORY_OPEN_MONTHS_STORAGE_KEY = "household.historyOpenMonths.v1";
+const ACTIVE_USER_KEY = "household.auth.userKey";
+
+function getActiveUserScope() {
+  if (typeof window === "undefined") return "personal";
+  return window.localStorage.getItem(ACTIVE_USER_KEY) || "personal";
+}
+
+function scopedStorageKey(key: string) {
+  return `${key}.${getActiveUserScope()}`;
+}
 
 const frequentSubcategories: Record<TransactionType, string[]> = {
   expense: [
@@ -123,18 +133,18 @@ function toDigits(value: string) {
 
 function readGlobalTemplateEnabled() {
   if (typeof window === "undefined") return true;
-  return window.localStorage.getItem(TEMPLATE_GLOBAL_ENABLED_KEY) !== "false";
+  return window.localStorage.getItem(scopedStorageKey(TEMPLATE_GLOBAL_ENABLED_KEY)) !== "false";
 }
 
 function writeGlobalTemplateEnabled(enabled: boolean) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(TEMPLATE_GLOBAL_ENABLED_KEY, String(enabled));
+  window.localStorage.setItem(scopedStorageKey(TEMPLATE_GLOBAL_ENABLED_KEY), String(enabled));
 }
 
 function readQuickSubcategories(): Record<TransactionType, string[]> {
   if (typeof window === "undefined") return frequentSubcategories;
   try {
-    const raw = window.localStorage.getItem(QUICK_SUBCATEGORY_STORAGE_KEY);
+    const raw = window.localStorage.getItem(scopedStorageKey(QUICK_SUBCATEGORY_STORAGE_KEY));
     if (!raw) return frequentSubcategories;
     const parsed = JSON.parse(raw) as Partial<Record<TransactionType, string[]>>;
     return {
@@ -148,7 +158,7 @@ function readQuickSubcategories(): Record<TransactionType, string[]> {
 
 function writeQuickSubcategories(items: Record<TransactionType, string[]>) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(QUICK_SUBCATEGORY_STORAGE_KEY, JSON.stringify(items));
+  window.localStorage.setItem(scopedStorageKey(QUICK_SUBCATEGORY_STORAGE_KEY), JSON.stringify(items));
 }
 
 function signedYen(value: number) {
@@ -159,6 +169,8 @@ function readTemplateDrafts(): TemplateDraft[] {
   if (typeof window === "undefined") return makeDefaultTemplates();
 
   const raw =
+    window.localStorage.getItem(scopedStorageKey(TEMPLATE_STORAGE_KEY)) ||
+    window.localStorage.getItem(scopedStorageKey(LEGACY_TEMPLATE_STORAGE_KEY)) ||
     window.localStorage.getItem(TEMPLATE_STORAGE_KEY) ||
     window.localStorage.getItem(LEGACY_TEMPLATE_STORAGE_KEY);
   if (!raw) return makeDefaultTemplates();
@@ -181,7 +193,7 @@ function readTemplateDrafts(): TemplateDraft[] {
 
 function writeTemplateDrafts(templates: TemplateDraft[]) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(templates));
+  window.localStorage.setItem(scopedStorageKey(TEMPLATE_STORAGE_KEY), JSON.stringify(templates));
 }
 
 function makeDefaultTemplates(): TemplateDraft[] {
@@ -595,8 +607,10 @@ function MonthHeader({
   return (
     <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2">
       <button type="button" onClick={() => setMonth((current) => shiftMonth(current, -1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="前の月">‹</button>
-      <button
-        type="button"
+      <input
+        type="month"
+        value={month}
+        onChange={(e) => setMonth(e.target.value)}
         onDoubleClick={() => setMonth(currentMonthString())}
         onTouchEnd={(e) => {
           e.stopPropagation();
@@ -605,10 +619,9 @@ function MonthHeader({
           e.currentTarget.dataset.lastTap = String(now);
           if (now - last < 320) setMonth(currentMonthString());
         }}
-        className="h-11 rounded-xl border border-[#d7c7aa] bg-white px-3 text-center text-lg font-black text-[#24190f] active:bg-[#f3eadb]"
-      >
-        {getMonthLabel(month)}
-      </button>
+        className="h-11 min-w-0 rounded-xl border border-[#d7c7aa] bg-white px-3 text-center text-lg font-black text-[#24190f] outline-none active:bg-[#f3eadb]"
+        aria-label="月を選択"
+      />
       <button type="button" onClick={() => setMonth((current) => shiftMonth(current, 1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="次の月">›</button>
     </div>
   );
@@ -624,8 +637,10 @@ function DateNavigator({
   return (
     <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2">
       <button type="button" onTouchEnd={(e) => e.stopPropagation()} onClick={() => setDate((current) => shiftDate(current, -1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="前の日">‹</button>
-      <button
-        type="button"
+      <input
+        type="date"
+        value={date}
+        onChange={(e) => setDate(e.target.value)}
         onDoubleClick={() => setDate(todayString())}
         onTouchEnd={(e) => {
           e.stopPropagation();
@@ -634,10 +649,9 @@ function DateNavigator({
           e.currentTarget.dataset.lastTap = String(now);
           if (now - last < 320) setDate(todayString());
         }}
-        className="h-11 rounded-xl border border-[#d7c7aa] bg-white px-3 text-center text-sm font-black text-[#24190f] active:bg-[#f3eadb]"
-      >
-        {date}
-      </button>
+        className="h-11 min-w-0 rounded-xl border border-[#d7c7aa] bg-white px-3 text-center text-sm font-black text-[#24190f] outline-none active:bg-[#f3eadb]"
+        aria-label="日付を選択"
+      />
       <button type="button" onTouchEnd={(e) => e.stopPropagation()} onClick={() => setDate((current) => shiftDate(current, 1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="次の日">›</button>
     </div>
   );
@@ -893,7 +907,7 @@ function HistoryTab({ overviews }: { overviews: MonthOverview[] }) {
   const [openYears, setOpenYears] = useState<Record<string, boolean>>(() => {
     if (typeof window === "undefined") return {};
     try {
-      return JSON.parse(window.localStorage.getItem(HISTORY_OPEN_YEARS_STORAGE_KEY) || "{}") as Record<string, boolean>;
+      return JSON.parse(window.localStorage.getItem(scopedStorageKey(HISTORY_OPEN_YEARS_STORAGE_KEY)) || "{}") as Record<string, boolean>;
     } catch {
       return {};
     }
@@ -901,18 +915,18 @@ function HistoryTab({ overviews }: { overviews: MonthOverview[] }) {
   const [openMonths, setOpenMonths] = useState<Record<string, boolean>>(() => {
     if (typeof window === "undefined") return {};
     try {
-      return JSON.parse(window.localStorage.getItem(HISTORY_OPEN_MONTHS_STORAGE_KEY) || "{}") as Record<string, boolean>;
+      return JSON.parse(window.localStorage.getItem(scopedStorageKey(HISTORY_OPEN_MONTHS_STORAGE_KEY)) || "{}") as Record<string, boolean>;
     } catch {
       return {};
     }
   });
 
   useEffect(() => {
-    window.localStorage.setItem(HISTORY_OPEN_YEARS_STORAGE_KEY, JSON.stringify(openYears));
+    window.localStorage.setItem(scopedStorageKey(HISTORY_OPEN_YEARS_STORAGE_KEY), JSON.stringify(openYears));
   }, [openYears]);
 
   useEffect(() => {
-    window.localStorage.setItem(HISTORY_OPEN_MONTHS_STORAGE_KEY, JSON.stringify(openMonths));
+    window.localStorage.setItem(scopedStorageKey(HISTORY_OPEN_MONTHS_STORAGE_KEY), JSON.stringify(openMonths));
   }, [openMonths]);
 
   const grouped = useMemo(() => {
