@@ -69,19 +69,10 @@ type MonthOverview = {
   categoryRows: CategoryOverview[];
 };
 
-type ConfirmedMonthRecord = {
-  month: string;
-  incomeBudget?: number;
-  expenseBudget?: number;
-  incomeActual?: number;
-  expenseActual?: number;
-};
-
 const TEMPLATE_STORAGE_KEY = "household.recurringTemplates.v2";
 const LEGACY_TEMPLATE_STORAGE_KEY = "household.recurringTemplates.v1";
 const TEMPLATE_GLOBAL_ENABLED_KEY =
   "household.recurringTemplates.globalEnabled.v1";
-const HISTORY_CONFIRM_STORAGE_KEY = "household.confirmedMonthRecords.v1";
 const QUICK_SUBCATEGORY_STORAGE_KEY = "household.quickSubcategories.v1";
 
 const frequentSubcategories: Record<TransactionType, string[]> = {
@@ -123,23 +114,6 @@ function readGlobalTemplateEnabled() {
 function writeGlobalTemplateEnabled(enabled: boolean) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(TEMPLATE_GLOBAL_ENABLED_KEY, String(enabled));
-}
-
-function readConfirmedMonthRecords(): Record<string, ConfirmedMonthRecord> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(HISTORY_CONFIRM_STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, ConfirmedMonthRecord>;
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeConfirmedMonthRecords(records: Record<string, ConfirmedMonthRecord>) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(HISTORY_CONFIRM_STORAGE_KEY, JSON.stringify(records));
 }
 
 function readQuickSubcategories(): Record<TransactionType, string[]> {
@@ -250,7 +224,6 @@ export default function Page() {
     useState<TemplateDraft[]>(makeDefaultTemplates);
   const [templatesEnabled, setTemplatesEnabled] = useState(true);
   const [monthOverviews, setMonthOverviews] = useState<MonthOverview[]>([]);
-  const [confirmedRecords, setConfirmedRecords] = useState<Record<string, ConfirmedMonthRecord>>({});
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const touchStartY = useRef<number | null>(null);
@@ -301,13 +274,10 @@ export default function Page() {
             .reduce((sum, b) => sum + b.budget, 0);
           const templateTransactions = getTemplateTransactions(templates, templatesEnabled);
           const actualTransactions = [...monthTransactions, ...templateTransactions];
-          const liveIncomeActual = totalByType(actualTransactions, "income");
-          const liveExpenseActual = totalByType(actualTransactions, "expense");
-          const confirmed = confirmedRecords[targetMonth];
-          const finalIncomeBudget = confirmed?.incomeBudget ?? incomeBudget;
-          const finalExpenseBudget = confirmed?.expenseBudget ?? expenseBudget;
-          const incomeActual = confirmed?.incomeActual ?? liveIncomeActual;
-          const expenseActual = confirmed?.expenseActual ?? liveExpenseActual;
+          const incomeActual = totalByType(actualTransactions, "income");
+          const expenseActual = totalByType(actualTransactions, "expense");
+          const finalIncomeBudget = incomeBudget;
+          const finalExpenseBudget = expenseBudget;
           const categoryRows: CategoryOverview[] = [
             ...makeSummaryRows(actualTransactions, monthBudgets, "income").map((row) => ({
               type: "income" as TransactionType,
@@ -349,7 +319,6 @@ export default function Page() {
   useEffect(() => {
     setTemplates(readTemplateDrafts());
     setTemplatesEnabled(readGlobalTemplateEnabled());
-    setConfirmedRecords(readConfirmedMonthRecords());
   }, []);
 
   useEffect(() => {
@@ -363,7 +332,7 @@ export default function Page() {
   useEffect(() => {
     void loadMonthOverviews();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [month, transactions, budgets, templates, templatesEnabled, confirmedRecords]);
+  }, [month, transactions, budgets, templates, templatesEnabled]);
 
   async function refreshWithoutJump() {
     await reload({ showLoading: false, keepScroll: true });
@@ -417,38 +386,7 @@ export default function Page() {
     [homeTransactions, budgets],
   );
 
-  function saveConfirmedRecord(patch: Omit<ConfirmedMonthRecord, "month">) {
-    setConfirmedRecords((current) => {
-      const next = {
-        ...current,
-        [month]: {
-          ...(current[month] || {}),
-          ...patch,
-          month,
-        },
-      };
-      writeConfirmedMonthRecords(next);
-      return next;
-    });
-  }
-
-  function confirmActuals() {
-    saveConfirmedRecord({ incomeActual: homeIncome, expenseActual: homeExpense });
-    setMessage("収支を確定しました");
-  }
-
-  function confirmBudgets(nextIncomeBudget?: number, nextExpenseBudget?: number) {
-    const incomeBudget =
-      nextIncomeBudget ??
-      budgets
-        .filter((b) => incomeCategories.includes(b.category as any))
-        .reduce((sum, b) => sum + b.budget, 0);
-    const expenseBudget =
-      nextExpenseBudget ??
-      budgets
-        .filter((b) => expenseCategories.includes(b.category as any))
-        .reduce((sum, b) => sum + b.budget, 0);
-    saveConfirmedRecord({ incomeBudget, expenseBudget });
+  function confirmBudgets() {
     setMessage("予算を確定しました");
   }
 
@@ -495,7 +433,6 @@ export default function Page() {
                   templatesEnabled={templatesEnabled}
                   setTemplates={setTemplates}
                   setTemplatesEnabled={setTemplatesEnabled}
-                  onConfirmActuals={confirmActuals}
                 />
               )}
 
@@ -538,7 +475,7 @@ function TabNav({
   onChange: (tab: AppTab) => void;
 }) {
   return (
-    <nav className="sticky top-2 z-20 mb-4 grid grid-cols-4 gap-1 rounded-2xl border border-[#e6dcc8] bg-white/95 p-1 shadow-sm backdrop-blur lg:static lg:max-w-2xl">
+    <nav className="fixed bottom-3 left-3 right-3 z-50 mx-auto grid max-w-md grid-cols-4 gap-1 rounded-2xl border border-[#e6dcc8] bg-white/95 p-1 shadow-lg backdrop-blur lg:bottom-6">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const active = activeTab === tab.key;
@@ -573,7 +510,6 @@ function HomeTab({
   templatesEnabled,
   setTemplates,
   setTemplatesEnabled,
-  onConfirmActuals,
 }: {
   month: string;
   income: number;
@@ -585,7 +521,6 @@ function HomeTab({
   templatesEnabled: boolean;
   setTemplates: React.Dispatch<React.SetStateAction<TemplateDraft[]>>;
   setTemplatesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
-  onConfirmActuals: () => void;
 }) {
   const incomeBudget = budgets
     .filter((b) => incomeCategories.includes(b.category as any))
@@ -602,7 +537,6 @@ function HomeTab({
         incomeActual={income}
         expenseBudget={expenseBudget}
         expenseActual={expense}
-        onConfirmActuals={onConfirmActuals}
       />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
@@ -660,14 +594,11 @@ function BudgetTab({
   expenseRows: SummaryRow[];
   onSaved: () => Promise<void>;
   setMessage: (value: string) => void;
-  onConfirmBudgets: (incomeBudget?: number, expenseBudget?: number) => void;
+  onConfirmBudgets: () => void;
 }) {
-  const incomeBudget = incomeRows.reduce((sum, r) => sum + r.budget, 0);
-  const expenseBudget = expenseRows.reduce((sum, r) => sum + r.budget, 0);
-
   return (
     <div className="space-y-4">
-      <BudgetPieCard incomeBudget={incomeBudget} expenseBudget={expenseBudget} />
+      <BudgetBreakdownPieCard incomeRows={incomeRows} expenseRows={expenseRows} />
       <BudgetPanel
         month={month}
         budgets={budgets}
@@ -675,66 +606,97 @@ function BudgetTab({
         setMessage={setMessage}
         onConfirmBudgets={onConfirmBudgets}
       />
-
     </div>
   );
 }
 
-function BudgetPieCard({
-  incomeBudget,
-  expenseBudget,
+function BudgetBreakdownPieCard({
+  incomeRows,
+  expenseRows,
 }: {
-  incomeBudget: number;
-  expenseBudget: number;
+  incomeRows: SummaryRow[];
+  expenseRows: SummaryRow[];
 }) {
-  const total = Math.max(incomeBudget + expenseBudget, 1);
-  const incomeRate = Math.round((incomeBudget / total) * 100);
-  const expenseRate = Math.round((expenseBudget / total) * 100);
-
   return (
     <div className="rounded-2xl border border-[#e6dcc8] bg-white p-4 shadow-sm sm:p-5">
       <div className="mb-4 flex items-center gap-2">
         <WalletCards size={18} className="text-[#8a6a3f]" />
-        <h2 className="text-lg font-black text-[#24190f]">予算</h2>
+        <h2 className="text-lg font-black text-[#24190f]">予算内訳</h2>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <BudgetDonut label="収入" value={incomeBudget} rate={incomeRate} tone="green" />
-        <BudgetDonut label="支出" value={expenseBudget} rate={expenseRate} tone="red" />
+        <BudgetCategoryDonut label="収入" rows={incomeRows} tone="green" />
+        <BudgetCategoryDonut label="支出" rows={expenseRows} tone="red" />
       </div>
     </div>
   );
 }
 
-function BudgetDonut({
+function BudgetCategoryDonut({
   label,
-  value,
-  rate,
+  rows,
   tone,
 }: {
   label: string;
-  value: number;
-  rate: number;
+  rows: SummaryRow[];
   tone: "green" | "red";
 }) {
-  const color = tone === "green" ? "#a7c4ad" : "#d7a19a";
+  const palette =
+    tone === "green"
+      ? ["#7fa88a", "#a7c4ad", "#c4d7c8", "#dce8df", "#edf3ef"]
+      : ["#c67b72", "#d7a19a", "#e3bbb6", "#efd6d2", "#f7e9e6"];
+  const budgetRows = rows.filter((row) => row.budget > 0);
+  const total = budgetRows.reduce((sum, row) => sum + row.budget, 0);
+  let cursor = 0;
+  const segments = budgetRows.map((row, index) => {
+    const start = cursor;
+    const end = start + (row.budget / Math.max(total, 1)) * 100;
+    cursor = end;
+    return `${palette[index % palette.length]} ${start}% ${end}%`;
+  });
+  const background =
+    total > 0 ? `conic-gradient(${segments.join(", ")})` : "#eee4d2";
+
   return (
-    <div className="rounded-xl border border-[#f0e7d8] bg-[#fbfaf7] p-3 text-center">
-      <div
-        className="mx-auto flex h-28 w-28 items-center justify-center rounded-full"
-        style={{ background: `conic-gradient(${color} ${rate}%, #eee4d2 0)` }}
-      >
+    <div className="rounded-xl border border-[#f0e7d8] bg-[#fbfaf7] p-3">
+      <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full" style={{ background }}>
         <div className="flex h-20 w-20 flex-col items-center justify-center rounded-full bg-white shadow-sm">
           <span className="text-xs font-black text-[#6b7280]">{label}</span>
-          <span className="text-lg font-black text-[#24190f]">{rate}%</span>
+          <span className="text-sm font-black text-[#24190f]">{yen(total)}</span>
         </div>
       </div>
-      <p className="mt-3 text-sm font-black text-[#24190f]">{yen(value)}</p>
+      <div className="mt-3 space-y-1">
+        {budgetRows.slice(0, 5).map((row, index) => (
+          <div key={row.category} className="flex items-center justify-between gap-2 text-[11px] font-bold">
+            <span className="min-w-0 truncate text-[#5b4630]">
+              <span className="mr-1 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: palette[index % palette.length] }} />
+              {row.category}
+            </span>
+            <span className="shrink-0 text-[#24190f]">{yen(row.budget)}</span>
+          </div>
+        ))}
+        {budgetRows.length > 5 && (
+          <p className="text-right text-[11px] font-bold text-[#6b7280]">ほか{budgetRows.length - 5}件</p>
+        )}
+      </div>
     </div>
   );
 }
 
 function HistoryTab({ overviews }: { overviews: MonthOverview[] }) {
+  const [openYears, setOpenYears] = useState<Record<string, boolean>>({});
   const [openMonths, setOpenMonths] = useState<Record<string, boolean>>({});
+
+  const grouped = useMemo(() => {
+    return overviews.reduce<Record<string, MonthOverview[]>>((acc, row) => {
+      const year = row.month.slice(0, 4);
+      acc[year] = [...(acc[year] || []), row];
+      return acc;
+    }, {});
+  }, [overviews]);
+
+  function toggleYear(year: string) {
+    setOpenYears((current) => ({ ...current, [year]: !(current[year] ?? year === currentMonthString().slice(0, 4)) }));
+  }
 
   function toggleMonth(month: string) {
     setOpenMonths((current) => ({ ...current, [month]: !current[month] }));
@@ -747,139 +709,74 @@ function HistoryTab({ overviews }: { overviews: MonthOverview[] }) {
         <h2 className="text-lg font-black text-[#24190f]">月別履歴</h2>
       </div>
 
-      <div className="hidden overflow-auto lg:block">
-        <table className="w-full text-sm">
-          <thead className="bg-[#fbfaf7] text-left text-xs font-bold text-[#6b7280]">
-            <tr>
-              <th className="px-4 py-3">月</th>
-              <th className="px-4 py-3 text-right">収入予算</th>
-              <th className="px-4 py-3 text-right">収入実績</th>
-              <th className="px-4 py-3 text-right">支出予算</th>
-              <th className="px-4 py-3 text-right">支出実績</th>
-              <th className="px-4 py-3 text-right">収支</th>
-            </tr>
-          </thead>
-          <tbody>
-            {overviews.map((row) => (
-              <tr key={row.month} className="border-t border-[#f0e7d8]">
-                <td className="px-4 py-3 font-bold text-[#24190f]">
-                  {getMonthLabel(row.month)}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  {yen(row.incomeBudget)}
-                </td>
-                <td className="px-4 py-3 text-right font-bold text-[#047857]">
-                  {yen(row.incomeActual)}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  {yen(row.expenseBudget)}
-                </td>
-                <td className="px-4 py-3 text-right font-bold text-[#b42318]">
-                  {yen(row.expenseActual)}
-                </td>
-                <td
-                  className={`px-4 py-3 text-right font-black ${row.balance < 0 ? "text-[#b42318]" : "text-[#047857]"}`}
+      <div className="space-y-3 p-3">
+        {(Object.entries(grouped) as Array<[string, MonthOverview[]]>)
+          .sort(([a], [b]) => b.localeCompare(a))
+          .map(([year, rows]) => {
+            const yearOpen = openYears[year] ?? year === currentMonthString().slice(0, 4);
+            const yearIncome = rows.reduce((sum, row) => sum + row.incomeActual, 0);
+            const yearExpense = rows.reduce((sum, row) => sum + row.expenseActual, 0);
+            const yearBalance = yearIncome - yearExpense;
+            return (
+              <section key={year} className="rounded-xl border border-[#f0e7d8] bg-[#fbfaf7]">
+                <button
+                  type="button"
+                  onClick={() => toggleYear(year)}
+                  className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
                 >
-                  {signedYen(row.balance)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                  <div>
+                    <p className="text-base font-black text-[#24190f]">{year}年</p>
+                    <p className="mt-1 text-xs font-bold text-[#6b7280]">
+                      収入 {yen(yearIncome)} / 支出 {yen(yearExpense)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-lg font-black ${yearBalance < 0 ? "text-[#b42318]" : "text-[#047857]"}`}>
+                      {signedYen(yearBalance)}
+                    </p>
+                    <p className="text-[11px] font-black text-[#6b7280]">{yearOpen ? "閉じる" : "開く"}</p>
+                  </div>
+                </button>
 
-      <div className="space-y-3 p-3 lg:hidden">
-        {overviews.map((row) => {
-          const open = openMonths[row.month] ?? row.month === currentMonthString();
-          const incomeRows = row.categoryRows.filter((item) => item.type === "income" && (item.actual > 0 || item.budget > 0));
-          const expenseRows = row.categoryRows.filter((item) => item.type === "expense" && (item.actual > 0 || item.budget > 0));
-          return (
-            <div
-              key={row.month}
-              className="rounded-xl border border-[#f0e7d8] bg-[#fbfaf7] p-3"
-            >
-              <button
-                type="button"
-                onClick={() => toggleMonth(row.month)}
-                className="mb-3 flex w-full items-center justify-between gap-3 text-left"
-              >
-                <p className="font-black text-[#24190f]">
-                  {getMonthLabel(row.month)}
-                </p>
-                <div className="text-right">
-                  <p
-                    className={`text-lg font-black ${row.balance < 0 ? "text-[#b42318]" : "text-[#047857]"}`}
-                  >
-                    {signedYen(row.balance)}
-                  </p>
-                  <p className="text-[11px] font-black text-[#6b7280]">
-                    {open ? "閉じる" : "内訳を見る"}
-                  </p>
-                </div>
-              </button>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <MiniStat label="収入予算" value={row.incomeBudget} />
-                <MiniStat
-                  label="収入実績"
-                  value={row.incomeActual}
-                  tone="green"
-                />
-                <MiniStat label="支出予算" value={row.expenseBudget} />
-                <MiniStat label="支出実績" value={row.expenseActual} tone="red" />
-              </div>
-
-              {open && (
-                <div className="mt-3 space-y-3">
-                  <HistoryCategorySection title="収入内訳" rows={incomeRows} />
-                  <HistoryCategorySection title="支出内訳" rows={expenseRows} />
-                </div>
-              )}
-            </div>
-          );
-        })}
+                {yearOpen && (
+                  <div className="space-y-2 border-t border-[#eee4d2] p-2">
+                    {rows.map((row) => {
+                      const open = openMonths[row.month] ?? row.month === currentMonthString();
+                      const incomeRows = row.categoryRows.filter((item) => item.type === "income" && (item.actual > 0 || item.budget > 0));
+                      const expenseRows = row.categoryRows.filter((item) => item.type === "expense" && (item.actual > 0 || item.budget > 0));
+                      return (
+                        <div key={row.month} className="rounded-xl border border-[#f0e7d8] bg-white p-3">
+                          <button type="button" onClick={() => toggleMonth(row.month)} className="mb-3 flex w-full items-center justify-between gap-3 text-left">
+                            <p className="font-black text-[#24190f]">{getMonthLabel(row.month)}</p>
+                            <div className="text-right">
+                              <p className={`text-lg font-black ${row.balance < 0 ? "text-[#b42318]" : "text-[#047857]"}`}>
+                                {signedYen(row.balance)}
+                              </p>
+                              <p className="text-[11px] font-black text-[#6b7280]">{open ? "閉じる" : "内訳"}</p>
+                            </div>
+                          </button>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <MiniStat label="収入予算" value={row.incomeBudget} />
+                            <MiniStat label="収入実績" value={row.incomeActual} tone="green" />
+                            <MiniStat label="支出予算" value={row.expenseBudget} />
+                            <MiniStat label="支出実績" value={row.expenseActual} tone="red" />
+                          </div>
+                          {open && (
+                            <div className="mt-3 space-y-3">
+                              <HistoryCategorySection title="収入内訳" rows={incomeRows} />
+                              <HistoryCategorySection title="支出内訳" rows={expenseRows} />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            );
+          })}
       </div>
     </div>
-  );
-}
-
-function HistoryCategorySection({
-  title,
-  rows,
-}: {
-  title: string;
-  rows: CategoryOverview[];
-}) {
-  if (rows.length === 0) {
-    return null;
-  }
-
-  return (
-    <section className="rounded-xl border border-[#eee4d2] bg-white p-3">
-      <h3 className="mb-2 text-sm font-black text-[#5b4630]">{title}</h3>
-      <div className="space-y-2">
-        {rows.map((row) => (
-          <div
-            key={`${row.type}-${row.category}`}
-            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-sm"
-          >
-            <div className="min-w-0">
-              <p className="truncate font-bold text-[#24190f]">{row.category}</p>
-              <p className="text-[11px] font-bold text-[#6b7280]">
-                予算 {yen(row.budget)}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className={`font-black ${row.type === "income" ? "text-[#047857]" : "text-[#b42318]"}`}>
-                {yen(row.actual)}
-              </p>
-              <p className={`text-[11px] font-black ${row.diff < 0 ? "text-[#b42318]" : "text-[#047857]"}`}>
-                {signedYen(row.diff)}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
   );
 }
 
@@ -936,14 +833,12 @@ function BudgetActualGraphCard({
   incomeActual,
   expenseBudget,
   expenseActual,
-  onConfirmActuals,
 }: {
   title: string;
   incomeBudget: number;
   incomeActual: number;
   expenseBudget: number;
   expenseActual: number;
-  onConfirmActuals?: () => void;
 }) {
   const maxValue = Math.max(
     incomeBudget,
@@ -991,15 +886,6 @@ function BudgetActualGraphCard({
           maxValue={maxValue}
         />
       </div>
-      {onConfirmActuals && (
-        <button
-          type="button"
-          onClick={onConfirmActuals}
-          className="mt-4 w-full rounded-xl bg-[#5b4630] py-3 text-sm font-black text-white active:scale-[0.99]"
-        >
-          収支確定
-        </button>
-      )}
     </div>
   );
 }
@@ -1815,7 +1701,7 @@ function BudgetPanel({
   budgets: HouseholdBudget[];
   onSaved: () => Promise<void>;
   setMessage: (value: string) => void;
-  onConfirmBudgets: (incomeBudget?: number, expenseBudget?: number) => void;
+  onConfirmBudgets: () => void;
 }) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const incomeBudgets = budgets.filter((b) =>
@@ -1830,18 +1716,6 @@ function BudgetPanel({
       Object.fromEntries(budgets.map((b) => [b.category, String(b.budget)])),
     );
   }, [budgets]);
-
-  function getDraftBudgetTotals() {
-    const incomeTotal = incomeBudgets.reduce(
-      (sum, b) => sum + Number(toDigits(drafts[b.category] || "0")),
-      0,
-    );
-    const expenseTotal = expenseBudgets.reduce(
-      (sum, b) => sum + Number(toDigits(drafts[b.category] || "0")),
-      0,
-    );
-    return { incomeTotal, expenseTotal };
-  }
 
   async function handleSave() {
     try {
@@ -1889,8 +1763,7 @@ function BudgetPanel({
         <button
           type="button"
           onClick={() => {
-            const { incomeTotal, expenseTotal } = getDraftBudgetTotals();
-            void handleSave().then(() => onConfirmBudgets(incomeTotal, expenseTotal));
+            void handleSave().then(() => onConfirmBudgets());
           }}
           className="w-full rounded-xl bg-[#5b4630] py-3 text-sm font-black text-white active:scale-[0.99]"
         >
