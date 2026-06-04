@@ -401,9 +401,11 @@ export default function Page() {
         className="min-h-screen bg-[#f7f3eb] px-3 pb-24 pt-4 sm:px-6 lg:px-8 lg:py-8"
       >
         <div className="mx-auto w-full max-w-7xl">
-          <header className="mb-4 rounded-[24px] border border-[#e6dcc8] bg-white p-3 shadow-sm sm:mb-6 sm:rounded-[28px] sm:p-4">
-            <MonthHeader month={month} setMonth={setMonth} />
-          </header>
+          {activeTab !== "history" && (
+            <header className="mb-4 rounded-[24px] border border-[#e6dcc8] bg-white p-3 shadow-sm sm:mb-6 sm:rounded-[28px] sm:p-4">
+              <MonthHeader month={month} setMonth={setMonth} />
+            </header>
+          )}
 
           {message && (
             <div className="mb-4 rounded-2xl border border-[#e6dcc8] bg-white px-4 py-3 text-sm font-bold text-[#5b4630] shadow-sm">
@@ -468,15 +470,16 @@ function MonthHeader({
   setMonth,
 }: {
   month: string;
-  setMonth: (value: string) => void;
+  setMonth: React.Dispatch<React.SetStateAction<string>>;
 }) {
   return (
     <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2">
-      <button type="button" onClick={() => setMonth(shiftMonth(month, -1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="前の月">‹</button>
+      <button type="button" onClick={() => setMonth((current) => shiftMonth(current, -1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="前の月">‹</button>
       <button
         type="button"
         onDoubleClick={() => setMonth(currentMonthString())}
         onTouchEnd={(e) => {
+          e.stopPropagation();
           const now = Date.now();
           const last = Number(e.currentTarget.dataset.lastTap || 0);
           e.currentTarget.dataset.lastTap = String(now);
@@ -486,7 +489,7 @@ function MonthHeader({
       >
         {getMonthLabel(month)}
       </button>
-      <button type="button" onClick={() => setMonth(shiftMonth(month, 1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="次の月">›</button>
+      <button type="button" onClick={() => setMonth((current) => shiftMonth(current, 1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="次の月">›</button>
     </div>
   );
 }
@@ -496,15 +499,16 @@ function DateNavigator({
   setDate,
 }: {
   date: string;
-  setDate: (value: string) => void;
+  setDate: React.Dispatch<React.SetStateAction<string>>;
 }) {
   return (
     <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2">
-      <button type="button" onClick={() => setDate(shiftDate(date, -1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="前の日">‹</button>
+      <button type="button" onTouchEnd={(e) => e.stopPropagation()} onClick={() => setDate((current) => shiftDate(current, -1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="前の日">‹</button>
       <button
         type="button"
         onDoubleClick={() => setDate(todayString())}
         onTouchEnd={(e) => {
+          e.stopPropagation();
           const now = Date.now();
           const last = Number(e.currentTarget.dataset.lastTap || 0);
           e.currentTarget.dataset.lastTap = String(now);
@@ -514,7 +518,7 @@ function DateNavigator({
       >
         {date}
       </button>
-      <button type="button" onClick={() => setDate(shiftDate(date, 1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="次の日">›</button>
+      <button type="button" onTouchEnd={(e) => e.stopPropagation()} onClick={() => setDate((current) => shiftDate(current, 1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="次の日">›</button>
     </div>
   );
 }
@@ -696,8 +700,34 @@ function BudgetCategoryDonut({
 }) {
   const palette =
     tone === "green"
-      ? ["#7fa88a", "#a7c4ad", "#c4d7c8", "#dce8df", "#edf3ef"]
-      : ["#c67b72", "#d7a19a", "#e3bbb6", "#efd6d2", "#f7e9e6"];
+      ? [
+          "#2f6f4e",
+          "#4f8f67",
+          "#6fa981",
+          "#8fbf9a",
+          "#a9d0b0",
+          "#3f766f",
+          "#5e9488",
+          "#7fb0a4",
+          "#9bc8bb",
+          "#bdddd4",
+          "#6b7f3f",
+          "#899c5a",
+        ]
+      : [
+          "#9f4f45",
+          "#b9665b",
+          "#cf7f72",
+          "#df9a8f",
+          "#e9b4aa",
+          "#8f5f3c",
+          "#a8774d",
+          "#bf9364",
+          "#d2aa7d",
+          "#e2c29c",
+          "#8f4f6f",
+          "#ad6f8d",
+        ];
   const budgetRows = rows.filter((row) => row.budget > 0);
   const total = budgetRows.reduce((sum, row) => sum + row.budget, 0);
   let cursor = 0;
@@ -762,6 +792,7 @@ function HistoryTab({ overviews }: { overviews: MonthOverview[] }) {
 
       <div className="space-y-3 p-3">
         {(Object.entries(grouped) as Array<[string, MonthOverview[]]>)
+          .filter(([year]) => Number(year) >= 2026)
           .sort(([a], [b]) => b.localeCompare(a))
           .map(([year, rows]) => {
             const yearOpen = openYears[year] ?? year === currentMonthString().slice(0, 4);
@@ -1047,7 +1078,7 @@ function InputPanel({
   setMessage,
 }: {
   date: string;
-  setDate: (value: string) => void;
+  setDate: React.Dispatch<React.SetStateAction<string>>;
   onAdded: () => Promise<void>;
   setMessage: (value: string) => void;
 }) {
@@ -1185,7 +1216,7 @@ function InputPanel({
               <span key={item} className="relative inline-flex">
                 <button
                   type="button"
-                  onClick={() => setSubcategory(item)}
+                  onClick={() => setSubcategory((current) => (current === item ? "" : item))}
                   className={`rounded-full border px-3 py-1.5 text-xs font-bold ${subcategory === item ? "border-[#5b4630] bg-[#5b4630] text-white" : "border-[#e6dcc8] bg-[#fbfaf7] text-[#5b4630] active:bg-[#f3eadb]"}`}
                 >
                   {item}
@@ -1194,7 +1225,7 @@ function InputPanel({
                   <button
                     type="button"
                     onClick={() => deleteQuickItem(item)}
-                    className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#b42318] text-[11px] font-black text-white shadow"
+                    className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#b42318] text-[9px] font-black leading-none text-white shadow-sm"
                     aria-label={`${item}を削除`}
                   >
                     ×
@@ -1342,13 +1373,22 @@ function FixedTemplatePanel({
             {open ? "閉じる" : "開く"}
           </p>
         </button>
-        <button
-          type="button"
-          onClick={() => setTemplatesEnabled((v) => !v)}
-          className={`shrink-0 rounded-full px-3 py-2 text-xs font-black ${templatesEnabled ? "bg-[#5b4630] text-white" : "bg-[#e5ded1] text-[#6b7280]"}`}
-        >
-          全体 {templatesEnabled ? "ON" : "OFF"}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setTemplatesEnabled((v) => !v)}
+            className={`rounded-full px-3 py-2 text-xs font-black ${templatesEnabled ? "bg-[#5b4630] text-white" : "bg-[#e5ded1] text-[#6b7280]"}`}
+          >
+            全体 {templatesEnabled ? "ON" : "OFF"}
+          </button>
+          <button
+            type="button"
+            onClick={applyTemplates}
+            className="rounded-full bg-[#5b4630] px-3 py-2 text-xs font-black text-white active:scale-[0.99]"
+          >
+            入力
+          </button>
+        </div>
       </div>
 
       <div className="mb-3 grid grid-cols-2 gap-2 text-sm">
@@ -1466,13 +1506,6 @@ function FixedTemplatePanel({
         })}
       </div>
 
-      <button
-        type="button"
-        onClick={applyTemplates}
-        className="mt-3 w-full rounded-xl bg-[#5b4630] py-3 text-sm font-black text-white active:scale-[0.99]"
-      >
-        ONの固定費を入力
-      </button>
 
       <button
         type="button"
@@ -1495,12 +1528,12 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block">
+    <div className="block">
       <span className="mb-1 block text-xs font-bold text-[#6b7280]">
         {label}
       </span>
       {children}
-    </label>
+    </div>
   );
 }
 
