@@ -185,13 +185,28 @@ function getMonthLabel(month: string) {
   return `${year}年${Number(m)}月`;
 }
 
-function getRecentMonths(count = 12) {
-  const base = new Date(`${currentMonthString()}-01T00:00:00`);
-  return Array.from({ length: count }, (_, index) => {
-    const d = new Date(base);
-    d.setMonth(base.getMonth() - index);
-    return d.toISOString().slice(0, 7);
-  });
+function shiftMonth(month: string, offset: number) {
+  const date = new Date(`${month}-01T00:00:00`);
+  date.setMonth(date.getMonth() + offset);
+  return date.toISOString().slice(0, 7);
+}
+
+function shiftDate(date: string, offset: number) {
+  const next = new Date(`${date}T00:00:00`);
+  next.setDate(next.getDate() + offset);
+  return next.toISOString().slice(0, 10);
+}
+
+function getMonthsFromJan2026() {
+  const start = new Date("2026-01-01T00:00:00");
+  const end = new Date(`${currentMonthString()}-01T00:00:00`);
+  const months: string[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    months.push(cursor.toISOString().slice(0, 7));
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return months.reverse();
 }
 
 function getTemplateTransactions(
@@ -261,7 +276,7 @@ export default function Page() {
   async function loadMonthOverviews() {
     try {
       const rows = await Promise.all(
-        getRecentMonths().map(async (targetMonth) => {
+        getMonthsFromJan2026().map(async (targetMonth) => {
           const [monthTransactions, monthBudgets] = await Promise.all([
             getTransactions(targetMonth),
             getBudgets(targetMonth),
@@ -272,8 +287,7 @@ export default function Page() {
           const expenseBudget = monthBudgets
             .filter((b) => expenseCategories.includes(b.category as any))
             .reduce((sum, b) => sum + b.budget, 0);
-          const templateTransactions = getTemplateTransactions(templates, templatesEnabled);
-          const actualTransactions = [...monthTransactions, ...templateTransactions];
+          const actualTransactions = monthTransactions;
           const incomeActual = totalByType(actualTransactions, "income");
           const expenseActual = totalByType(actualTransactions, "expense");
           const finalIncomeBudget = incomeBudget;
@@ -332,7 +346,7 @@ export default function Page() {
   useEffect(() => {
     void loadMonthOverviews();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [month, transactions, budgets, templates, templatesEnabled]);
+  }, [month, transactions, budgets]);
 
   async function refreshWithoutJump() {
     await reload({ showLoading: false, keepScroll: true });
@@ -353,14 +367,7 @@ export default function Page() {
     }
   }
 
-  const fixedTemplateTransactions = useMemo(
-    () => getTemplateTransactions(templates, templatesEnabled),
-    [templates, templatesEnabled],
-  );
-  const homeTransactions = useMemo(
-    () => [...transactions, ...fixedTemplateTransactions],
-    [transactions, fixedTemplateTransactions],
-  );
+  const homeTransactions = transactions;
   const income = useMemo(
     () => totalByType(transactions, "income"),
     [transactions],
@@ -386,10 +393,6 @@ export default function Page() {
     [homeTransactions, budgets],
   );
 
-  function confirmBudgets() {
-    setMessage("予算を確定しました");
-  }
-
   return (
     <LoginGate>
       <main
@@ -399,12 +402,7 @@ export default function Page() {
       >
         <div className="mx-auto w-full max-w-7xl">
           <header className="mb-4 rounded-[24px] border border-[#e6dcc8] bg-white p-3 shadow-sm sm:mb-6 sm:rounded-[28px] sm:p-4">
-            <input
-              type="month"
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-              className="h-12 w-full rounded-xl border border-[#d7c7aa] bg-white px-3 text-center text-lg font-black text-[#24190f] lg:w-64"
-            />
+            <MonthHeader month={month} setMonth={setMonth} />
           </header>
 
           {message && (
@@ -423,22 +421,21 @@ export default function Page() {
             <div className="space-y-4">
               {activeTab === "home" && (
                 <HomeTab
-                  month={month}
                   income={homeIncome}
                   expense={homeExpense}
                   budgets={budgets}
                   incomeRows={incomeRows}
                   expenseRows={expenseRows}
-                  templates={templates}
-                  templatesEnabled={templatesEnabled}
-                  setTemplates={setTemplates}
-                  setTemplatesEnabled={setTemplatesEnabled}
                 />
               )}
 
               {activeTab === "input" && (
                 <InputTab
                   transactions={transactions}
+                  templates={templates}
+                  templatesEnabled={templatesEnabled}
+                  setTemplates={setTemplates}
+                  setTemplatesEnabled={setTemplatesEnabled}
                   onChanged={refreshWithoutJump}
                   setMessage={setMessage}
                 />
@@ -452,7 +449,6 @@ export default function Page() {
                   expenseRows={expenseRows}
                   onSaved={refreshWithoutJump}
                   setMessage={setMessage}
-                  onConfirmBudgets={confirmBudgets}
                 />
               )}
 
@@ -464,6 +460,62 @@ export default function Page() {
         </div>
       </main>
     </LoginGate>
+  );
+}
+
+function MonthHeader({
+  month,
+  setMonth,
+}: {
+  month: string;
+  setMonth: (value: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2">
+      <button type="button" onClick={() => setMonth(shiftMonth(month, -1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="前の月">‹</button>
+      <button
+        type="button"
+        onDoubleClick={() => setMonth(currentMonthString())}
+        onTouchEnd={(e) => {
+          const now = Date.now();
+          const last = Number(e.currentTarget.dataset.lastTap || 0);
+          e.currentTarget.dataset.lastTap = String(now);
+          if (now - last < 320) setMonth(currentMonthString());
+        }}
+        className="h-11 rounded-xl border border-[#d7c7aa] bg-white px-3 text-center text-lg font-black text-[#24190f] active:bg-[#f3eadb]"
+      >
+        {getMonthLabel(month)}
+      </button>
+      <button type="button" onClick={() => setMonth(shiftMonth(month, 1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="次の月">›</button>
+    </div>
+  );
+}
+
+function DateNavigator({
+  date,
+  setDate,
+}: {
+  date: string;
+  setDate: (value: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2">
+      <button type="button" onClick={() => setDate(shiftDate(date, -1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="前の日">‹</button>
+      <button
+        type="button"
+        onDoubleClick={() => setDate(todayString())}
+        onTouchEnd={(e) => {
+          const now = Date.now();
+          const last = Number(e.currentTarget.dataset.lastTap || 0);
+          e.currentTarget.dataset.lastTap = String(now);
+          if (now - last < 320) setDate(todayString());
+        }}
+        className="h-11 rounded-xl border border-[#d7c7aa] bg-white px-3 text-center text-sm font-black text-[#24190f] active:bg-[#f3eadb]"
+      >
+        {date}
+      </button>
+      <button type="button" onClick={() => setDate(shiftDate(date, 1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="次の日">›</button>
+    </div>
   );
 }
 
@@ -500,27 +552,17 @@ function TabNav({
 }
 
 function HomeTab({
-  month,
   income,
   expense,
   budgets,
   incomeRows,
   expenseRows,
-  templates,
-  templatesEnabled,
-  setTemplates,
-  setTemplatesEnabled,
 }: {
-  month: string;
   income: number;
   expense: number;
   budgets: HouseholdBudget[];
   incomeRows: SummaryRow[];
   expenseRows: SummaryRow[];
-  templates: TemplateDraft[];
-  templatesEnabled: boolean;
-  setTemplates: React.Dispatch<React.SetStateAction<TemplateDraft[]>>;
-  setTemplatesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   const incomeBudget = budgets
     .filter((b) => incomeCategories.includes(b.category as any))
@@ -548,28 +590,43 @@ function HomeTab({
         />
       </div>
 
-      <FixedTemplatePanel
-        templates={templates}
-        templatesEnabled={templatesEnabled}
-        setTemplates={setTemplates}
-        setTemplatesEnabled={setTemplatesEnabled}
-      />
     </div>
   );
 }
 
 function InputTab({
   transactions,
+  templates,
+  templatesEnabled,
+  setTemplates,
+  setTemplatesEnabled,
   onChanged,
   setMessage,
 }: {
   transactions: HouseholdTransaction[];
+  templates: TemplateDraft[];
+  templatesEnabled: boolean;
+  setTemplates: React.Dispatch<React.SetStateAction<TemplateDraft[]>>;
+  setTemplatesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
   onChanged: () => Promise<void>;
   setMessage: (value: string) => void;
 }) {
+  const [selectedDate, setSelectedDate] = useState(todayString());
+
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
-      <InputPanel onAdded={onChanged} setMessage={setMessage} />
+      <div className="space-y-4">
+        <InputPanel date={selectedDate} setDate={setSelectedDate} onAdded={onChanged} setMessage={setMessage} />
+        <FixedTemplatePanel
+          date={selectedDate}
+          templates={templates}
+          templatesEnabled={templatesEnabled}
+          setTemplates={setTemplates}
+          setTemplatesEnabled={setTemplatesEnabled}
+          onAdded={onChanged}
+          setMessage={setMessage}
+        />
+      </div>
       <HistoryTable
         transactions={transactions}
         onChanged={onChanged}
@@ -586,7 +643,6 @@ function BudgetTab({
   expenseRows,
   onSaved,
   setMessage,
-  onConfirmBudgets,
 }: {
   month: string;
   budgets: HouseholdBudget[];
@@ -594,7 +650,6 @@ function BudgetTab({
   expenseRows: SummaryRow[];
   onSaved: () => Promise<void>;
   setMessage: (value: string) => void;
-  onConfirmBudgets: () => void;
 }) {
   return (
     <div className="space-y-4">
@@ -604,7 +659,6 @@ function BudgetTab({
         budgets={budgets}
         onSaved={onSaved}
         setMessage={setMessage}
-        onConfirmBudgets={onConfirmBudgets}
       />
     </div>
   );
@@ -665,7 +719,7 @@ function BudgetCategoryDonut({
         </div>
       </div>
       <div className="mt-3 space-y-1">
-        {budgetRows.slice(0, 5).map((row, index) => (
+        {budgetRows.map((row, index) => (
           <div key={row.category} className="flex items-center justify-between gap-2 text-[11px] font-bold">
             <span className="min-w-0 truncate text-[#5b4630]">
               <span className="mr-1 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: palette[index % palette.length] }} />
@@ -674,9 +728,6 @@ function BudgetCategoryDonut({
             <span className="shrink-0 text-[#24190f]">{yen(row.budget)}</span>
           </div>
         ))}
-        {budgetRows.length > 5 && (
-          <p className="text-right text-[11px] font-bold text-[#6b7280]">ほか{budgetRows.length - 5}件</p>
-        )}
       </div>
     </div>
   );
@@ -990,14 +1041,17 @@ function CenterBarRow({
 }
 
 function InputPanel({
+  date,
+  setDate,
   onAdded,
   setMessage,
 }: {
+  date: string;
+  setDate: (value: string) => void;
   onAdded: () => Promise<void>;
   setMessage: (value: string) => void;
 }) {
   const [type, setType] = useState<TransactionType>("expense");
-  const [date, setDate] = useState(todayString());
   const [category, setCategory] = useState("食費");
   const [subcategory, setSubcategory] = useState("");
   const [amount, setAmount] = useState("");
@@ -1017,20 +1071,23 @@ function InputPanel({
     setEditingQuickItems(false);
   }, [type]);
 
-  useEffect(() => {
-    setQuickEditText((quickItems[type] || []).join("、"));
-  }, [quickItems, type]);
-
-  function saveQuickItems() {
-    const nextItems = quickEditText
-      .split(/[、,\n]/)
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .slice(0, 12);
+  function addQuickItem() {
+    const value = quickEditText.trim();
+    if (!value) return;
+    const currentItems = quickItems[type] || [];
+    const nextItems = Array.from(new Set([...currentItems, value])).slice(0, 20);
     const next = { ...quickItems, [type]: nextItems };
     setQuickItems(next);
     writeQuickSubcategories(next);
-    setEditingQuickItems(false);
+    setQuickEditText("");
+  }
+
+  function deleteQuickItem(item: string) {
+    const nextItems = (quickItems[type] || []).filter((value) => value !== item);
+    const next = { ...quickItems, [type]: nextItems };
+    setQuickItems(next);
+    writeQuickSubcategories(next);
+    if (subcategory === item) setSubcategory("");
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -1086,12 +1143,7 @@ function InputPanel({
         </div>
 
         <Field label="日付">
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="input-desktop"
-          />
+          <DateNavigator date={date} setDate={setDate} />
         </Field>
 
         <Field label="金額">
@@ -1130,37 +1182,48 @@ function InputPanel({
           />
           <div className="mt-2 flex flex-wrap gap-2">
             {(quickItems[type] || []).map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setSubcategory(item)}
-                className={`rounded-full border px-3 py-1.5 text-xs font-bold ${subcategory === item ? "border-[#5b4630] bg-[#5b4630] text-white" : "border-[#e6dcc8] bg-[#fbfaf7] text-[#5b4630] active:bg-[#f3eadb]"}`}
-              >
-                {item}
-              </button>
+              <span key={item} className="relative inline-flex">
+                <button
+                  type="button"
+                  onClick={() => setSubcategory(item)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-bold ${subcategory === item ? "border-[#5b4630] bg-[#5b4630] text-white" : "border-[#e6dcc8] bg-[#fbfaf7] text-[#5b4630] active:bg-[#f3eadb]"}`}
+                >
+                  {item}
+                </button>
+                {editingQuickItems && (
+                  <button
+                    type="button"
+                    onClick={() => deleteQuickItem(item)}
+                    className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#b42318] text-[11px] font-black text-white shadow"
+                    aria-label={`${item}を削除`}
+                  >
+                    ×
+                  </button>
+                )}
+              </span>
             ))}
             <button
               type="button"
               onClick={() => setEditingQuickItems((value) => !value)}
               className="rounded-full border border-[#d7c7aa] bg-white px-3 py-1.5 text-xs font-black text-[#5b4630]"
             >
-              編集
+              {editingQuickItems ? "完了" : "編集"}
             </button>
           </div>
           {editingQuickItems && (
-            <div className="mt-2 rounded-xl border border-[#e6dcc8] bg-[#fbfaf7] p-2">
-              <textarea
+            <div className="mt-3 grid grid-cols-[minmax(0,1fr)_80px] gap-2 rounded-xl border border-[#e6dcc8] bg-[#fbfaf7] p-2">
+              <input
                 value={quickEditText}
                 onChange={(e) => setQuickEditText(e.target.value)}
-                placeholder="よく使う小分類を、読点または改行で区切って入力"
-                className="min-h-20 w-full rounded-lg border border-[#d7c7aa] bg-white px-3 py-2 text-sm font-bold text-[#24190f]"
+                placeholder="新しい小分類"
+                className="h-10 rounded-lg border border-[#d7c7aa] bg-white px-3 text-sm font-bold text-[#24190f]"
               />
               <button
                 type="button"
-                onClick={saveQuickItems}
-                className="mt-2 w-full rounded-lg bg-[#5b4630] py-2 text-xs font-black text-white"
+                onClick={addQuickItem}
+                className="rounded-lg bg-[#5b4630] text-xs font-black text-white"
               >
-                よく使う小分類を保存
+                登録
               </button>
             </div>
           )}
@@ -1178,15 +1241,21 @@ function InputPanel({
 }
 
 function FixedTemplatePanel({
+  date,
   templates,
   templatesEnabled,
   setTemplates,
   setTemplatesEnabled,
+  onAdded,
+  setMessage,
 }: {
+  date: string;
   templates: TemplateDraft[];
   templatesEnabled: boolean;
   setTemplates: React.Dispatch<React.SetStateAction<TemplateDraft[]>>;
   setTemplatesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  onAdded: () => Promise<void>;
+  setMessage: (value: string) => void;
 }) {
   const enabledTemplates = templates.filter((item) => item.enabled);
   const activeExpenseTotal = enabledTemplates
@@ -1234,11 +1303,41 @@ function FixedTemplatePanel({
     });
   }
 
+  async function applyTemplates() {
+    const targetTemplates = templatesEnabled
+      ? templates.filter((item) => item.enabled && Number(toDigits(item.amount)) > 0)
+      : [];
+
+    if (targetTemplates.length === 0) {
+      setMessage("入力できる固定費がありません");
+      return;
+    }
+
+    try {
+      await Promise.all(
+        targetTemplates.map((item) =>
+          addTransaction({
+            date,
+            type: item.type,
+            category: item.category,
+            subcategory: item.subcategory || "固定費",
+            amount: Number(toDigits(item.amount)),
+            memo: "fixed-template",
+          }),
+        ),
+      );
+      setMessage("固定費を入力しました");
+      await onAdded();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "固定費の入力に失敗しました");
+    }
+  }
+
   return (
     <div className="rounded-2xl border border-[#e6dcc8] bg-white p-4 shadow-sm sm:p-5">
       <div className="mb-4 flex items-start justify-between gap-3">
         <button type="button" onClick={() => setOpen((v) => !v)} className="min-w-0 text-left">
-          <h2 className="text-lg font-black text-[#24190f]">固定費テンプレート</h2>
+          <h2 className="text-lg font-black text-[#24190f]">固定費入力</h2>
           <p className="mt-1 text-xs font-bold text-[#6b7280]">
             {open ? "閉じる" : "開く"}
           </p>
@@ -1369,8 +1468,16 @@ function FixedTemplatePanel({
 
       <button
         type="button"
+        onClick={applyTemplates}
+        className="mt-3 w-full rounded-xl bg-[#5b4630] py-3 text-sm font-black text-white active:scale-[0.99]"
+      >
+        ONの固定費を入力
+      </button>
+
+      <button
+        type="button"
         onClick={addTemplateRow}
-        className="mt-3 w-full rounded-xl border border-[#d7c7aa] bg-white py-3 text-sm font-black text-[#5b4630] active:bg-[#f3eadb]"
+        className="mt-2 w-full rounded-xl border border-[#d7c7aa] bg-white py-3 text-sm font-black text-[#5b4630] active:bg-[#f3eadb]"
       >
         固定費を追加
       </button>
@@ -1735,13 +1842,11 @@ function BudgetPanel({
   budgets,
   onSaved,
   setMessage,
-  onConfirmBudgets,
 }: {
   month: string;
   budgets: HouseholdBudget[];
   onSaved: () => Promise<void>;
   setMessage: (value: string) => void;
-  onConfirmBudgets: () => void;
 }) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const incomeBudgets = budgets.filter((b) =>
@@ -1757,20 +1862,20 @@ function BudgetPanel({
     );
   }, [budgets]);
 
-  async function handleSave() {
+  async function handleChangeBudget(category: string, value: string) {
+    const nextDrafts = { ...drafts, [category]: value };
+    setDrafts(nextDrafts);
     try {
       const next = budgets.map((b) => ({
         ...b,
         month,
-        budget: Number(toDigits(drafts[b.category] || "0")),
+        budget: Number(toDigits(nextDrafts[b.category] || "0")),
       }));
       await saveBudgets(month, next);
       setMessage("予算を保存しました");
       await onSaved();
     } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "予算保存に失敗しました",
-      );
+      setMessage(error instanceof Error ? error.message : "予算保存に失敗しました");
     }
   }
 
@@ -1784,32 +1889,14 @@ function BudgetPanel({
         title="収入"
         rows={incomeBudgets}
         drafts={drafts}
-        setDrafts={setDrafts}
+        onChangeBudget={handleChangeBudget}
       />
       <BudgetGroup
         title="支出"
         rows={expenseBudgets}
         drafts={drafts}
-        setDrafts={setDrafts}
+        onChangeBudget={handleChangeBudget}
       />
-      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <button
-          type="button"
-          onClick={handleSave}
-          className="w-full rounded-xl border border-[#d7c7aa] bg-white py-3 text-sm font-black text-[#5b4630] active:bg-[#f3eadb]"
-        >
-          保存
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            void handleSave().then(() => onConfirmBudgets());
-          }}
-          className="w-full rounded-xl bg-[#5b4630] py-3 text-sm font-black text-white active:scale-[0.99]"
-        >
-          予算確定
-        </button>
-      </div>
     </div>
   );
 }
@@ -1818,12 +1905,12 @@ function BudgetGroup({
   title,
   rows,
   drafts,
-  setDrafts,
+  onChangeBudget,
 }: {
   title: string;
   rows: HouseholdBudget[];
   drafts: Record<string, string>;
-  setDrafts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  onChangeBudget: (category: string, value: string) => void;
 }) {
   const budgetOptions = Array.from({ length: 501 }, (_, index) => index * 1000);
 
@@ -1841,12 +1928,7 @@ function BudgetGroup({
             </span>
             <select
               value={toDigits(drafts[budget.category] ?? "0")}
-              onChange={(e) =>
-                setDrafts((current) => ({
-                  ...current,
-                  [budget.category]: e.target.value,
-                }))
-              }
+              onChange={(e) => onChangeBudget(budget.category, e.target.value)}
               className="h-10 rounded-md border border-[#d7c7aa] bg-white px-2 text-right text-sm font-bold text-[#24190f]"
             >
               {budgetOptions.map((value) => (
