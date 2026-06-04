@@ -222,6 +222,22 @@ function getMonthsFromJan2026() {
   return months.reverse();
 }
 
+function getMonthsFromSelectedToCurrent(selectedMonth: string) {
+  const [startYear, startMonth] = selectedMonth.split("-").map(Number);
+  const [currentYear, currentMonth] = currentMonthString().split("-").map(Number);
+  const start = new Date(startYear, startMonth - 1, 1);
+  const end = new Date(currentYear, currentMonth - 1, 1);
+  if (start > end) return [selectedMonth];
+
+  const months: string[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    months.push(formatLocalMonth(cursor));
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return months;
+}
+
 function getTemplateTransactions(
   templates: TemplateDraft[],
   globalEnabled: boolean,
@@ -982,7 +998,7 @@ function BudgetActualGraphCard({
     expenseActual,
     1,
   );
-  const actualBalance = incomeActual - expenseActual;
+  const actualBalance = (incomeActual - incomeBudget) - (expenseActual - expenseBudget);
 
   return (
     <div className="rounded-2xl border border-[#e6dcc8] bg-white p-4 shadow-sm sm:p-5">
@@ -1895,6 +1911,7 @@ function BudgetPanel({
   setMessage: (value: string) => void;
 }) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
   const incomeBudgets = budgets.filter((b) =>
     incomeCategories.includes(b.category as any),
   );
@@ -1908,41 +1925,76 @@ function BudgetPanel({
     );
   }, [budgets]);
 
-  async function handleChangeBudget(category: string, value: string) {
-    const nextDrafts = { ...drafts, [category]: value };
-    setDrafts(nextDrafts);
+  function handleChangeBudget(category: string, value: string) {
+    setDrafts((current) => ({ ...current, [category]: value }));
+  }
+
+  async function handleConfirmBudget() {
+    const applyFollowing = window.confirm(
+      `${getMonthLabel(month)}以降の予算にも同じ変更を反映しますか？\n\nOK: 以降の月にも反映\nキャンセル: この月だけ反映`,
+    );
+    const targetMonths = applyFollowing
+      ? getMonthsFromSelectedToCurrent(month)
+      : [month];
+    const nextBudgets = budgets.map((b) => ({
+      ...b,
+      budget: Number(toDigits(drafts[b.category] || "0")),
+    }));
+
     try {
-      const next = budgets.map((b) => ({
-        ...b,
-        month,
-        budget: Number(toDigits(nextDrafts[b.category] || "0")),
-      }));
-      await saveBudgets(month, next);
-      setMessage("予算を保存しました");
+      setSaving(true);
+      await Promise.all(
+        targetMonths.map((targetMonth) =>
+          saveBudgets(
+            targetMonth,
+            nextBudgets.map((budget) => ({ ...budget, month: targetMonth })),
+          ),
+        ),
+      );
+      setMessage(
+        applyFollowing
+          ? `${getMonthLabel(month)}以降の予算を確定しました`
+          : `${getMonthLabel(month)}の予算を確定しました`,
+      );
       await onSaved();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "予算保存に失敗しました");
+    } finally {
+      setSaving(false);
     }
   }
 
   return (
-    <div className="rounded-2xl border border-[#e6dcc8] bg-white p-4 shadow-sm sm:p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <WalletCards size={18} className="text-[#8a6a3f]" />
-        <h2 className="text-lg font-black text-[#24190f]">月別予算</h2>
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-[#e6dcc8] bg-white p-4 shadow-sm sm:p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <WalletCards size={18} className="text-[#8a6a3f]" />
+          <h2 className="text-lg font-black text-[#24190f]">月別予算</h2>
+        </div>
+        <BudgetGroup
+          title="収入"
+          rows={incomeBudgets}
+          drafts={drafts}
+          onChangeBudget={handleChangeBudget}
+        />
+        <BudgetGroup
+          title="支出"
+          rows={expenseBudgets}
+          drafts={drafts}
+          onChangeBudget={handleChangeBudget}
+        />
       </div>
-      <BudgetGroup
-        title="収入"
-        rows={incomeBudgets}
-        drafts={drafts}
-        onChangeBudget={handleChangeBudget}
-      />
-      <BudgetGroup
-        title="支出"
-        rows={expenseBudgets}
-        drafts={drafts}
-        onChangeBudget={handleChangeBudget}
-      />
+
+      <div className="sticky bottom-[84px] z-40 rounded-2xl border border-[#d7c7aa] bg-white/95 p-3 shadow-lg backdrop-blur">
+        <button
+          type="button"
+          onClick={handleConfirmBudget}
+          disabled={saving}
+          className="h-12 w-full rounded-xl bg-[#5b4630] text-sm font-black text-white shadow-sm disabled:opacity-50"
+        >
+          {saving ? "確定中..." : "予算を確定"}
+        </button>
+      </div>
     </div>
   );
 }
