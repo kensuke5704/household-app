@@ -169,8 +169,11 @@ export default function LoginGate({ children }: { children: ReactNode }) {
 
   if (loading && !isUnlocked) {
     return (
-      <main className="flex min-h-[100dvh] w-full items-center justify-center bg-[#f7f3eb] px-4 py-6">
-        <p className="text-sm font-black text-[#6b7280]">読み込み中...</p>
+      <main className="flex min-h-[100dvh] w-full items-center justify-center bg-[#f7f3eb] px-5">
+        <div className="flex flex-col items-center gap-3 text-[#5b4630]">
+          <div className="h-10 w-10 animate-pulse rounded-2xl bg-[#e6dcc8]" />
+          <p className="text-sm font-black">読み込み中...</p>
+        </div>
       </main>
     );
   }
@@ -178,9 +181,9 @@ export default function LoginGate({ children }: { children: ReactNode }) {
   if (isUnlocked) {
     return (
       <>
-        <div className="fixed right-3 top-3 z-[70] flex items-center gap-2 rounded-full border border-[#e6dcc8] bg-white/90 px-3 py-2 text-[11px] font-black text-[#6b7280] shadow-sm backdrop-blur">
-          <span className="max-w-[140px] truncate">{activeEmail}</span>
-          <button type="button" onClick={handleLogout} className="text-[#5b4630]">
+        <div className="fixed right-3 top-3 z-[70] flex max-w-[calc(100vw-24px)] items-center gap-2 rounded-full border border-[#e6dcc8] bg-white/90 px-3 py-2 text-[11px] font-black text-[#6b7280] shadow-sm backdrop-blur">
+          <span className="max-w-[150px] truncate">{activeEmail}</span>
+          <button type="button" onClick={handleLogout} className="shrink-0 text-[#5b4630]">
             ログアウト
           </button>
         </div>
@@ -189,75 +192,113 @@ export default function LoginGate({ children }: { children: ReactNode }) {
     );
   }
 
+  const isLogin = mode === "login";
+
   return (
-    <main className="flex min-h-[100dvh] w-full items-center justify-center bg-[#f7f3eb] px-4 py-6 sm:px-6">
-      <section className="w-full max-w-[420px] rounded-[28px] border border-[#e6dcc8] bg-white px-5 py-7 shadow-sm sm:px-8 sm:py-9">
-        <div className="mb-6 text-center">
-          <p className="text-[11px] font-black tracking-[0.28em] text-[#8a6a3f]">
+    <main className="min-h-[100dvh] w-full overflow-hidden bg-[#f7f3eb] text-[#24190f]">
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[430px] flex-col justify-between px-5 pb-[max(22px,env(safe-area-inset-bottom))] pt-[max(24px,env(safe-area-inset-top))]">
+        <div className="pointer-events-none absolute left-1/2 top-[-140px] h-[300px] w-[300px] -translate-x-1/2 rounded-full bg-[#eadfca] opacity-70 blur-3xl" />
+
+        <header className="relative pt-5 text-center">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-[24px] border border-[#e6dcc8] bg-white shadow-sm">
+            <span className="text-3xl">家</span>
+          </div>
+          <p className="mt-5 text-[11px] font-black tracking-[0.28em] text-[#8a6a3f]">
             HOUSEHOLD BOOK
           </p>
-          <h1 className="mt-2 text-2xl font-black text-[#24190f] sm:text-3xl">
-            {mode === "login" ? "ログイン" : "新規登録"}
+          <h1 className="mt-2 text-[28px] font-black tracking-[-0.04em] text-[#24190f]">
+            {isLogin ? "ログイン" : "新規登録"}
           </h1>
-          <p className="mt-3 text-sm font-bold leading-relaxed text-[#6b7280]">
-            ユーザーごとに家計簿データを分けて保存します。
+          <p className="mx-auto mt-3 max-w-[280px] text-sm font-bold leading-relaxed text-[#7a7166]">
+            家計簿データをユーザーごとに分けて管理します。
           </p>
-        </div>
+        </header>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <label className="block">
-            <span className="mb-2 block text-xs font-bold text-[#6b7280]">
-              メールアドレス
-            </span>
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="h-14 w-full rounded-2xl border border-[#d7c7aa] bg-[#fbfaf7] px-4 text-base font-bold text-[#24190f] outline-none focus:border-[#8a6a3f] focus:bg-white"
-              autoComplete="email"
-              autoFocus
-            />
-          </label>
+        <section className="relative mt-8 rounded-[30px] border border-[#e6dcc8] bg-white/95 p-4 shadow-[0_18px_50px_rgba(91,70,48,0.12)] backdrop-blur">
+          <div className="mb-4 grid grid-cols-2 rounded-[20px] bg-[#f4efe5] p-1">
+            <button
+              type="button"
+              onClick={() => {
+                setMode("login");
+                setError("");
+              }}
+              className={`h-11 rounded-[16px] text-sm font-black transition ${
+                isLogin ? "bg-white text-[#24190f] shadow-sm" : "text-[#8a7b68]"
+              }`}
+            >
+              ログイン
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode("signup");
+                setError("");
+              }}
+              className={`h-11 rounded-[16px] text-sm font-black transition ${
+                !isLogin ? "bg-white text-[#24190f] shadow-sm" : "text-[#8a7b68]"
+              }`}
+            >
+              新規登録
+            </button>
+          </div>
 
-          <label className="block">
-            <span className="mb-2 block text-xs font-bold text-[#6b7280]">
-              パスワード
-            </span>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="h-14 w-full rounded-2xl border border-[#d7c7aa] bg-[#fbfaf7] px-4 text-base font-bold text-[#24190f] outline-none focus:border-[#8a6a3f] focus:bg-white"
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
-            />
-          </label>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <label className="block">
+              <span className="mb-2 block px-1 text-xs font-black text-[#7a7166]">
+                メールアドレス
+              </span>
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="h-14 w-full rounded-[20px] border border-[#d7c7aa] bg-[#fbfaf7] px-4 text-base font-bold text-[#24190f] outline-none transition placeholder:text-[#c1b6a6] focus:border-[#8a6a3f] focus:bg-white focus:ring-4 focus:ring-[#eadfca]"
+                autoComplete="email"
+                inputMode="email"
+                placeholder="example@email.com"
+                autoFocus
+              />
+            </label>
 
-          {error && (
-            <p className="rounded-2xl bg-[#fff0ed] px-4 py-3 text-sm font-bold text-[#b42318]">
-              {error}
-            </p>
-          )}
+            <label className="block">
+              <span className="mb-2 block px-1 text-xs font-black text-[#7a7166]">
+                パスワード
+              </span>
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="h-14 w-full rounded-[20px] border border-[#d7c7aa] bg-[#fbfaf7] px-4 text-base font-bold text-[#24190f] outline-none transition placeholder:text-[#c1b6a6] focus:border-[#8a6a3f] focus:bg-white focus:ring-4 focus:ring-[#eadfca]"
+                autoComplete={isLogin ? "current-password" : "new-password"}
+                placeholder="8文字以上を推奨"
+              />
+            </label>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="h-14 w-full rounded-2xl bg-[#5b4630] text-base font-black text-white active:scale-[0.99] disabled:opacity-60"
-          >
-            {loading ? "処理中..." : mode === "login" ? "ログイン" : "登録して始める"}
-          </button>
-        </form>
+            {error && (
+              <p className="rounded-[18px] border border-[#ffd8d2] bg-[#fff0ed] px-4 py-3 text-sm font-bold leading-relaxed text-[#b42318]">
+                {error}
+              </p>
+            )}
 
-        <button
-          type="button"
-          onClick={() => {
-            setMode((current) => (current === "login" ? "signup" : "login"));
-            setError("");
-          }}
-          className="mt-5 w-full text-center text-sm font-black text-[#5b4630]"
-        >
-          {mode === "login" ? "新規登録はこちら" : "ログインはこちら"}
-        </button>
-      </section>
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-2 h-14 w-full rounded-[20px] bg-[#5b4630] text-base font-black text-white shadow-[0_12px_24px_rgba(91,70,48,0.22)] transition active:scale-[0.99] disabled:opacity-60"
+            >
+              {loading ? "処理中..." : isLogin ? "ログインする" : "登録して始める"}
+            </button>
+          </form>
+
+          <p className="mt-4 text-center text-[11px] font-bold leading-relaxed text-[#8a7b68]">
+            {isSupabaseEnabled
+              ? "登録後、確認メールが届く場合があります。"
+              : "ローカル環境では端末内にユーザー情報を保存します。"}
+          </p>
+        </section>
+
+        <footer className="relative mt-6 text-center text-[11px] font-bold text-[#9b8f7d]">
+          Household App
+        </footer>
+      </div>
     </main>
   );
 }
