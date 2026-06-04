@@ -668,15 +668,30 @@ function BudgetActualGraphCard({
   expenseBudget: number;
   expenseActual: number;
 }) {
+  const maxValue = Math.max(incomeBudget, incomeActual, expenseBudget, expenseActual, 1);
+  const budgetBalance = incomeBudget - expenseBudget;
+  const actualBalance = incomeActual - expenseActual;
+
   return (
     <div className="rounded-2xl border border-[#e6dcc8] bg-white p-4 shadow-sm sm:p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <BarChart3 size={18} className="text-[#8a6a3f]" />
-        <h2 className="text-lg font-black text-[#24190f]">{title}</h2>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <BarChart3 size={18} className="text-[#8a6a3f]" />
+          <h2 className="text-lg font-black text-[#24190f]">{title}</h2>
+        </div>
+        <div className="hidden rounded-full bg-[#f3eadb] px-3 py-1 text-xs font-black text-[#5b4630] sm:block">
+          中央が0円
+        </div>
       </div>
+
+      <div className="mb-4 grid grid-cols-2 gap-2 text-sm">
+        <MiniStat label="予算上の残り" value={budgetBalance} tone={budgetBalance < 0 ? "red" : "green"} />
+        <MiniStat label="実費の残り" value={actualBalance} tone={actualBalance < 0 ? "red" : "green"} />
+      </div>
+
       <div className="space-y-5">
-        <CenterBarRow label="予算" leftLabel="収入予算" rightLabel="支出予算" leftValue={incomeBudget} rightValue={expenseBudget} />
-        <CenterBarRow label="実費" leftLabel="収入実績" rightLabel="支出実績" leftValue={incomeActual} rightValue={expenseActual} />
+        <CenterBarRow label="予算" leftLabel="収入予算" rightLabel="支出予算" leftValue={incomeBudget} rightValue={expenseBudget} maxValue={maxValue} />
+        <CenterBarRow label="実費" leftLabel="収入実績" rightLabel="支出実績" leftValue={incomeActual} rightValue={expenseActual} maxValue={maxValue} />
       </div>
     </div>
   );
@@ -688,33 +703,40 @@ function CenterBarRow({
   rightLabel,
   leftValue,
   rightValue,
+  maxValue,
 }: {
   label: string;
   leftLabel: string;
   rightLabel: string;
   leftValue: number;
   rightValue: number;
+  maxValue: number;
 }) {
-  const maxValue = Math.max(leftValue, rightValue, 1);
   const leftWidth = Math.min(100, (leftValue / maxValue) * 100);
   const rightWidth = Math.min(100, (rightValue / maxValue) * 100);
 
   return (
-    <div>
-      <div className="mb-2 flex items-center justify-between gap-2 text-xs font-black text-[#6b7280]">
-        <span>{leftLabel}: {yen(leftValue)}</span>
-        <span className="rounded-full bg-[#f3eadb] px-2 py-1 text-[#5b4630]">{label}</span>
-        <span>{rightLabel}: {yen(rightValue)}</span>
+    <div className="rounded-xl border border-[#f0e7d8] bg-[#fbfaf7] p-3">
+      <div className="mb-2 flex items-center justify-center">
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-[#5b4630] shadow-sm">{label}</span>
       </div>
-      <div className="relative grid h-9 grid-cols-2 overflow-hidden rounded-full bg-[#f3eadb]">
+
+      <div className="mb-2 grid grid-cols-2 gap-3 text-xs font-black text-[#6b7280]">
+        <span className="text-left">{leftLabel}<br /><span className="text-[#047857]">{yen(leftValue)}</span></span>
+        <span className="text-right">{rightLabel}<br /><span className="text-[#b42318]">{yen(rightValue)}</span></span>
+      </div>
+
+      <div className="relative grid h-10 grid-cols-2 overflow-hidden rounded-full bg-[#eee4d2]">
         <div className="relative flex justify-end border-r border-white/90">
           <div className="h-full rounded-l-full bg-[#a7c4ad]" style={{ width: `${leftWidth}%` }} />
         </div>
         <div className="relative flex justify-start">
           <div className="h-full rounded-r-full bg-[#d7a19a]" style={{ width: `${rightWidth}%` }} />
         </div>
-        <div className="absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 bg-white" />
+        <div className="absolute left-1/2 top-0 h-full w-[3px] -translate-x-1/2 bg-white" />
+        <div className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#5b4630]" />
       </div>
+
       <div className="mt-1 grid grid-cols-2 text-[11px] font-bold text-[#8a6a3f]">
         <span>← 収入</span>
         <span className="text-right">支出 →</span>
@@ -823,8 +845,12 @@ function FixedTemplatePanel({
   setTemplates: React.Dispatch<React.SetStateAction<TemplateDraft[]>>;
   setTemplatesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
-  const activeTotal = templates
-    .filter((item) => item.enabled && item.type === "expense")
+  const enabledTemplates = templates.filter((item) => item.enabled);
+  const activeExpenseTotal = enabledTemplates
+    .filter((item) => item.type === "expense")
+    .reduce((sum, item) => sum + Number(toDigits(item.amount)), 0);
+  const activeIncomeTotal = enabledTemplates
+    .filter((item) => item.type === "income")
     .reduce((sum, item) => sum + Number(toDigits(item.amount)), 0);
 
   function updateTemplate(id: string, patch: Partial<TemplateDraft>) {
@@ -842,6 +868,16 @@ function FixedTemplatePanel({
     setTemplates((current) => current.filter((item) => item.id !== id));
   }
 
+  function moveTemplateRow(index: number, direction: -1 | 1) {
+    setTemplates((current) => {
+      const next = [...current];
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= next.length) return current;
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
+  }
+
   return (
     <div className="rounded-2xl border border-[#e6dcc8] bg-white p-4 shadow-sm sm:p-5">
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -852,16 +888,23 @@ function FixedTemplatePanel({
         <button type="button" onClick={() => setTemplatesEnabled((v) => !v)} className={`shrink-0 rounded-full px-3 py-2 text-xs font-black ${templatesEnabled ? "bg-[#5b4630] text-white" : "bg-[#e5ded1] text-[#6b7280]"}`}>全体 {templatesEnabled ? "ON" : "OFF"}</button>
       </div>
 
-      <div className="mb-3 rounded-xl bg-[#fbfaf7] p-3 text-sm font-black text-[#5b4630]">ONの固定費合計: {yen(templatesEnabled ? activeTotal : 0)}</div>
+      <div className="mb-3 grid grid-cols-2 gap-2 text-sm">
+        <MiniStat label="ONの固定収入" value={templatesEnabled ? activeIncomeTotal : 0} tone="green" />
+        <MiniStat label="ONの固定支出" value={templatesEnabled ? activeExpenseTotal : 0} tone="red" />
+      </div>
 
       <div className="space-y-3">
-        {templates.map((template) => {
+        {templates.map((template, index) => {
           const templateCategories = template.type === "income" ? incomeCategories : expenseCategories;
           return (
             <div key={template.id} className={`rounded-xl border p-3 ${template.enabled && templatesEnabled ? "border-[#e6dcc8] bg-[#fbfaf7]" : "border-[#e5ded1] bg-[#f8f6f1] opacity-70"}`}>
               <div className="mb-2 flex items-center justify-between gap-2">
                 <button type="button" onClick={() => updateTemplate(template.id, { enabled: !template.enabled })} className={`rounded-full px-3 py-1.5 text-xs font-black ${template.enabled ? "bg-[#5b4630] text-white" : "bg-[#e5ded1] text-[#6b7280]"}`}>{template.enabled ? "ON" : "OFF"}</button>
-                <button type="button" onClick={() => deleteTemplateRow(template.id)} className="rounded-md border border-[#ead8d4] bg-white px-3 py-1.5 text-xs font-black text-[#b42318]">削除</button>
+                <div className="flex items-center gap-1">
+                  <button type="button" onClick={() => moveTemplateRow(index, -1)} disabled={index === 0} className="rounded-md border border-[#d7c7aa] bg-white px-2 py-1.5 text-xs font-black text-[#5b4630] disabled:opacity-30">↑</button>
+                  <button type="button" onClick={() => moveTemplateRow(index, 1)} disabled={index === templates.length - 1} className="rounded-md border border-[#d7c7aa] bg-white px-2 py-1.5 text-xs font-black text-[#5b4630] disabled:opacity-30">↓</button>
+                  <button type="button" onClick={() => deleteTemplateRow(template.id)} className="rounded-md border border-[#ead8d4] bg-white px-3 py-1.5 text-xs font-black text-[#b42318]">削除</button>
+                </div>
               </div>
               <div className="mb-2 grid grid-cols-2 gap-2">
                 <select value={template.type} onChange={(e) => { const nextType = e.target.value as TransactionType; updateTemplate(template.id, { type: nextType, category: nextType === "income" ? "給与" : "その他(支出)" }); }} className="input-desktop h-10 py-1 text-sm">
