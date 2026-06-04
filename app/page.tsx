@@ -11,6 +11,7 @@ import {
   Trash2,
   WalletCards,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   expenseCategories,
   incomeCategories,
@@ -77,7 +78,7 @@ const frequentSubcategories: Record<TransactionType, string[]> = {
   income: ["給与", "副収入", "立替返金", "取崩し"],
 };
 
-const tabs: Array<{ key: AppTab; label: string; icon: React.ComponentType<{ size?: number }> }> = [
+const tabs: Array<{ key: AppTab; label: string; icon: LucideIcon }> = [
   { key: "home", label: "ホーム", icon: Home },
   { key: "input", label: "入力", icon: Plus },
   { key: "budget", label: "予算", icon: WalletCards },
