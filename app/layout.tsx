@@ -27,3 +27,18 @@ export default function RootLayout({
     </html>
   );
 }
+
+export const metadata: Metadata = {
+  title: "Household App",
+  description: "Household management app",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/icons/icon.png",
+    apple: "/icons/icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Household App",
+    statusBarStyle: "default",
+  },
+};
