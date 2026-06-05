@@ -313,6 +313,14 @@ export default function Page() {
   const [message, setMessage] = useState("");
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>(null);
   const touchStartY = useRef<number | null>(null);
+  const lastKnownMonthRef = useRef(currentMonthString());
+
+  function syncMonthToToday(options?: { force?: boolean }) {
+    const currentMonth = currentMonthString();
+    const shouldSync = options?.force || currentMonth !== lastKnownMonthRef.current;
+    lastKnownMonthRef.current = currentMonth;
+    if (shouldSync) setMonth(currentMonth);
+  }
 
   async function reload(options?: {
     showLoading?: boolean;
@@ -395,6 +403,26 @@ export default function Page() {
       // 月別履歴は補助表示のため、失敗しても入力画面を止めない。
     }
   }
+
+  useEffect(() => {
+    syncMonthToToday({ force: true });
+
+    function handleFocusOrVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        syncMonthToToday();
+      }
+    }
+
+    window.addEventListener("focus", handleFocusOrVisibilityChange);
+    document.addEventListener("visibilitychange", handleFocusOrVisibilityChange);
+    const timer = window.setInterval(() => syncMonthToToday(), 60 * 1000);
+
+    return () => {
+      window.removeEventListener("focus", handleFocusOrVisibilityChange);
+      document.removeEventListener("visibilitychange", handleFocusOrVisibilityChange);
+      window.clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     reload();
@@ -798,6 +826,34 @@ function InputTab({
   requestConfirm: ConfirmFn;
 }) {
   const [selectedDate, setSelectedDate] = useState(todayString());
+  const lastKnownDateRef = useRef(todayString());
+
+  useEffect(() => {
+    function syncDateToToday(options?: { force?: boolean }) {
+      const currentDate = todayString();
+      const shouldSync = options?.force || currentDate !== lastKnownDateRef.current;
+      lastKnownDateRef.current = currentDate;
+      if (shouldSync) setSelectedDate(currentDate);
+    }
+
+    syncDateToToday({ force: true });
+
+    function handleFocusOrVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        syncDateToToday();
+      }
+    }
+
+    window.addEventListener("focus", handleFocusOrVisibilityChange);
+    document.addEventListener("visibilitychange", handleFocusOrVisibilityChange);
+    const timer = window.setInterval(() => syncDateToToday(), 60 * 1000);
+
+    return () => {
+      window.removeEventListener("focus", handleFocusOrVisibilityChange);
+      document.removeEventListener("visibilitychange", handleFocusOrVisibilityChange);
+      window.clearInterval(timer);
+    };
+  }, []);
 
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">

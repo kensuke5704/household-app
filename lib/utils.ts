@@ -5,19 +5,25 @@ export function yen(value: number) {
   return `${Math.round(value).toLocaleString("ja-JP")}円`;
 }
 
+function pad2(value: number) {
+  return String(value).padStart(2, "0");
+}
+
 export function todayString() {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
 }
 
 export function currentMonthString() {
-  return new Date().toISOString().slice(0, 7);
+  const now = new Date();
+  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
 }
 
 export function getMonthRange(month: string) {
-  const start = `${month}-01`;
-  const endDate = new Date(`${month}-01T00:00:00`);
-  endDate.setMonth(endDate.getMonth() + 1);
-  const end = endDate.toISOString().slice(0, 10);
+  const [year, monthIndex] = month.split("-").map(Number);
+  const start = `${year}-${pad2(monthIndex)}-01`;
+  const endDate = new Date(year, monthIndex, 1);
+  const end = `${endDate.getFullYear()}-${pad2(endDate.getMonth() + 1)}-${pad2(endDate.getDate())}`;
   return { start, end };
 }
 
