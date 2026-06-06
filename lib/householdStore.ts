@@ -1,10 +1,12 @@
 import { defaultBudgets } from "./categories";
+import { initialHouseholdBudgets, initialHouseholdTransactions } from "./initialHouseholdData";
 import { getMonthRange } from "./utils";
 import { isSupabaseEnabled, supabase } from "./supabase";
 import type { HouseholdBudget, HouseholdTransaction } from "@/types/household";
 
 const STORAGE_TRANSACTIONS = "household.transactions.v1";
 const STORAGE_BUDGETS = "household.budgets.v1";
+const STORAGE_INITIAL_SEED = "household.initialData.seeded.v1";
 const ACTIVE_USER_KEY = "household.auth.userKey";
 const FALLBACK_USER_KEY = "personal";
 
@@ -50,6 +52,81 @@ function normalizeTransaction(row: any): HouseholdTransaction {
     memo: row.memo ?? "",
     created_at: row.created_at,
   };
+}
+
+
+export async function seedInitialHouseholdData() {
+  if (typeof window === "undefined") return false;
+
+  const markerKey = scopedLocalKey(STORAGE_INITIAL_SEED);
+  if (window.localStorage.getItem(markerKey) === "true") return false;
+
+  if (isSupabaseEnabled && supabase) {
+    const { count, error: countError } = await supabase
+      .from("household_transactions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_key", getUserKey())
+      .eq("memo", "excel-seed");
+
+    if (countError) throw countError;
+    if ((count ?? 0) > 0) {
+      window.localStorage.setItem(markerKey, "true");
+      return false;
+    }
+
+    const { error: transactionError } = await supabase.from("household_transactions").insert(
+      initialHouseholdTransactions.map((input) => ({
+        user_key: getUserKey(),
+        date: input.date,
+        type: input.type,
+        category: input.category,
+        subcategory: input.subcategory || null,
+        amount: input.amount,
+        memo: "excel-seed",
+      })),
+    );
+    if (transactionError) throw transactionError;
+
+    const { error: budgetError } = await supabase.from("household_budgets").upsert(
+      initialHouseholdBudgets.map((budget) => ({
+        user_key: getUserKey(),
+        month: budget.month,
+        category: budget.category,
+        budget: budget.budget,
+      })),
+      { onConflict: "user_key,month,category" },
+    );
+    if (budgetError) throw budgetError;
+
+    window.localStorage.setItem(markerKey, "true");
+    return true;
+  }
+
+  const existingTransactions = readLocal<HouseholdTransaction[]>(STORAGE_TRANSACTIONS, []);
+  const hasSeededTransactions = existingTransactions.some((row) => row.memo === "excel-seed");
+
+  if (!hasSeededTransactions) {
+    const seededTransactions = initialHouseholdTransactions.map((input) => ({
+      ...input,
+      id: makeId(),
+      memo: "excel-seed",
+      created_at: new Date().toISOString(),
+    }));
+    writeLocal(STORAGE_TRANSACTIONS, [...seededTransactions, ...existingTransactions]);
+  }
+
+  const existingBudgets = readLocal<HouseholdBudget[]>(STORAGE_BUDGETS, []);
+  const seededMonths = new Set(initialHouseholdBudgets.map((budget) => budget.month));
+  const categoriesByMonth = new Set(
+    initialHouseholdBudgets.map((budget) => `${budget.month}:${budget.category}`),
+  );
+  const preservedBudgets = existingBudgets.filter(
+    (budget) => !seededMonths.has(budget.month) || !categoriesByMonth.has(`${budget.month}:${budget.category}`),
+  );
+  writeLocal(STORAGE_BUDGETS, [...preservedBudgets, ...initialHouseholdBudgets]);
+
+  window.localStorage.setItem(markerKey, "true");
+  return !hasSeededTransactions;
 }
 
 export async function getTransactions(month: string): Promise<HouseholdTransaction[]> {
