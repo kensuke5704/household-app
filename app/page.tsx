@@ -802,24 +802,29 @@ function InputTab({
   const [selectedDate, setSelectedDate] = useState(todayString());
 
   return (
-    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,440px)]">
       <div className="space-y-4">
-        <InputPanel date={selectedDate} setDate={setSelectedDate} onAdded={onChanged} setMessage={setMessage} />
-        <FixedTemplatePanel
+        <InputPanel
           date={selectedDate}
-          templates={templates}
-          templatesEnabled={templatesEnabled}
-          setTemplates={setTemplates}
-          setTemplatesEnabled={setTemplatesEnabled}
+          setDate={setSelectedDate}
           onAdded={onChanged}
           setMessage={setMessage}
-          requestConfirm={requestConfirm}
+        />
+        <HistoryTable
+          transactions={transactions}
+          onChanged={onChanged}
+          setMessage={setMessage}
         />
       </div>
-      <HistoryTable
-        transactions={transactions}
-        onChanged={onChanged}
+      <FixedTemplatePanel
+        date={selectedDate}
+        templates={templates}
+        templatesEnabled={templatesEnabled}
+        setTemplates={setTemplates}
+        setTemplatesEnabled={setTemplatesEnabled}
+        onAdded={onChanged}
         setMessage={setMessage}
+        requestConfirm={requestConfirm}
       />
     </div>
   );
