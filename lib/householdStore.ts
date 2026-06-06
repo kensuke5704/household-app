@@ -9,6 +9,7 @@ const STORAGE_BUDGETS = "household.budgets.v1";
 const STORAGE_INITIAL_SEED = "household.initialData.seeded.v1";
 const ACTIVE_USER_KEY = "household.auth.userKey";
 const FALLBACK_USER_KEY = "personal";
+const INITIAL_DATA_USER_KEY = "kensuke5704";
 
 function getUserKey() {
   if (typeof window === "undefined") return FALLBACK_USER_KEY;
@@ -58,6 +59,9 @@ function normalizeTransaction(row: any): HouseholdTransaction {
 export async function seedInitialHouseholdData() {
   if (typeof window === "undefined") return false;
 
+  const userKey = getUserKey();
+  if (userKey !== INITIAL_DATA_USER_KEY) return false;
+
   const markerKey = scopedLocalKey(STORAGE_INITIAL_SEED);
   if (window.localStorage.getItem(markerKey) === "true") return false;
 
@@ -65,7 +69,7 @@ export async function seedInitialHouseholdData() {
     const { count, error: countError } = await supabase
       .from("household_transactions")
       .select("id", { count: "exact", head: true })
-      .eq("user_key", getUserKey())
+      .eq("user_key", userKey)
       .eq("memo", "excel-seed");
 
     if (countError) throw countError;
@@ -76,7 +80,7 @@ export async function seedInitialHouseholdData() {
 
     const { error: transactionError } = await supabase.from("household_transactions").insert(
       initialHouseholdTransactions.map((input) => ({
-        user_key: getUserKey(),
+        user_key: userKey,
         date: input.date,
         type: input.type,
         category: input.category,
@@ -89,7 +93,7 @@ export async function seedInitialHouseholdData() {
 
     const { error: budgetError } = await supabase.from("household_budgets").upsert(
       initialHouseholdBudgets.map((budget) => ({
-        user_key: getUserKey(),
+        user_key: userKey,
         month: budget.month,
         category: budget.category,
         budget: budget.budget,
