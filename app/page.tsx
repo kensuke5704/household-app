@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, WalletCards } from "lucide-react";
 import {
   expenseCategories,
   incomeCategories,
@@ -10,19 +9,16 @@ import {
 import {
   getBudgets,
   getTransactions,
-  saveBudgets,
   seedInitialHouseholdData,
 } from "@/lib/householdStore";
 import {
   currentMonthString,
   makeSummaryRows,
   totalByType,
-  yen,
 } from "@/lib/utils";
 import type {
   HouseholdBudget,
   HouseholdTransaction,
-  SummaryRow,
   TransactionType,
 } from "@/types/household";
 import LoginGate from "@/components/LoginGate";
@@ -31,6 +27,7 @@ import MonthHeader from "@/components/household/MonthHeader";
 import ProfileTab from "@/components/household/ProfileTab";
 import HomeTab from "@/components/household/HomeTab";
 import BudgetTab from "@/components/household/BudgetTab";
+import BudgetPanel from "@/components/household/BudgetPanel";
 import InputTab from "@/components/household/InputTab";
 import HistoryTab from "@/components/household/HistoryTab";
 import TabNav from "@/components/household/TabNav";
@@ -70,12 +67,6 @@ const frequentSubcategories: Record<TransactionType, string[]> = {
   income: ["給与", "副収入", "立替返金", "取崩し"],
 };
 
-function formatNumber(value: number | string) {
-  const digits = String(value).replace(/[^0-9]/g, "");
-  if (!digits) return "";
-  return Number(digits).toLocaleString("ja-JP");
-}
-
 function toDigits(value: string) {
   return value.replace(/[^0-9]/g, "");
 }
@@ -108,10 +99,6 @@ function readQuickSubcategories(): Record<TransactionType, string[]> {
 function writeQuickSubcategories(items: Record<TransactionType, string[]>) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(scopedStorageKey(QUICK_SUBCATEGORY_STORAGE_KEY), JSON.stringify(items));
-}
-
-function signedYen(value: number) {
-  return `${value >= 0 ? "+" : ""}${yen(value)}`;
 }
 
 function readTemplateDrafts(): TemplateDraft[] {
@@ -156,11 +143,6 @@ function makeDefaultTemplates(): TemplateDraft[] {
   }));
 }
 
-function getMonthLabel(month: string) {
-  const [year, m] = month.split("-");
-  return `${year}年${Number(m)}月`;
-}
-
 function pad2(value: number) {
   return String(value).padStart(2, "0");
 }
@@ -196,17 +178,6 @@ function getMonthsFromSelectedToCurrent(selectedMonth: string) {
   const months: string[] = [];
   const cursor = new Date(start);
   while (cursor <= end) {
-    months.push(formatLocalMonth(cursor));
-    cursor.setMonth(cursor.getMonth() + 1);
-  }
-  return months;
-}
-
-function getMonthsFromSelectedForward(selectedMonth: string, count = 120) {
-  const [startYear, startMonth] = selectedMonth.split("-").map(Number);
-  const cursor = new Date(startYear, startMonth - 1, 1);
-  const months: string[] = [];
-  for (let i = 0; i < count; i += 1) {
     months.push(formatLocalMonth(cursor));
     cursor.setMonth(cursor.getMonth() + 1);
   }
@@ -493,260 +464,5 @@ export default function Page() {
         )}
       </main>
     </LoginGate>
-  );
-}
-
-function SummaryTable({
-  title,
-  rows,
-  type,
-}: {
-  title: string;
-  rows: SummaryRow[];
-  type: TransactionType;
-}) {
-  const [open, setOpen] = useState(false);
-  const totalBudget = rows.reduce((sum, r) => sum + r.budget, 0);
-  const totalActual = rows.reduce((sum, r) => sum + r.actual, 0);
-  const totalDiff =
-    type === "income" ? totalActual - totalBudget : totalBudget - totalActual;
-  const diffLabel = type === "expense" ? "残り" : "差額";
-  const totalLabel = type === "expense" ? "合計残り" : "合計差額";
-
-  return (
-    <div className="rounded-2xl border border-[#e6dcc8] bg-white shadow-sm">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center justify-between gap-3 border-b border-[#eee4d2] px-4 py-3 text-left sm:px-5 sm:py-4"
-      >
-        <div className="flex items-center gap-2">
-          <BarChart3 size={18} className="text-[#8a6a3f]" />
-          <h2 className="text-lg font-black text-[#24190f]">{title}</h2>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <span
-            className={
-              totalDiff < 0
-                ? "text-sm font-black text-[#b42318]"
-                : "text-sm font-black text-[#047857]"
-            }
-          >
-            {signedYen(totalDiff)}
-          </span>
-          <span className="rounded-full bg-[#f3eadb] px-2 py-1 text-xs font-black text-[#5b4630]">
-            {open ? "閉じる" : "開く"}
-          </span>
-        </div>
-      </button>
-      {open && (
-        <div className="space-y-2 p-3">
-          {rows.map((row) => (
-            <div
-              key={row.category}
-              className="rounded-xl border border-[#f0e7d8] bg-[#fbfaf7] p-3"
-            >
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="font-black text-[#24190f]">{row.category}</p>
-                <div className="text-right">
-                  <p className="text-[11px] font-black text-[#6b7280]">
-                    {diffLabel}
-                  </p>
-                  <p
-                    className={`font-black ${row.diff < 0 ? "text-[#b42318]" : "text-[#047857]"}`}
-                  >
-                    {signedYen(row.diff)}
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-2 text-sm min-[380px]:grid-cols-2">
-                <MiniStat label="予算" value={row.budget} />
-                <MiniStat label="実績" value={row.actual} />
-              </div>
-            </div>
-          ))}
-          <div className="rounded-xl border-2 border-[#e6dcc8] bg-white p-4">
-            <div className="flex items-center justify-between font-black">
-              <span>{totalLabel}</span>
-              <span
-                className={totalDiff < 0 ? "text-[#b42318]" : "text-[#047857]"}
-              >
-                {signedYen(totalDiff)}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function MiniStat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone?: "green" | "red";
-}) {
-  const color =
-    tone === "green"
-      ? "text-[#047857]"
-      : tone === "red"
-        ? "text-[#b42318]"
-        : "text-[#24190f]";
-  return (
-    <div className="rounded-lg bg-white p-2">
-      <p className="text-xs font-bold text-[#6b7280]">{label}</p>
-      <p className={`font-bold ${color}`}>{yen(value)}</p>
-    </div>
-  );
-}
-
-function BudgetPanel({
-  month,
-  budgets,
-  onSaved,
-  setMessage,
-  requestConfirm,
-}: {
-  month: string;
-  budgets: HouseholdBudget[];
-  onSaved: () => Promise<void>;
-  setMessage: (value: string) => void;
-  requestConfirm: ConfirmFn;
-}) {
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-  const incomeBudgets = budgets.filter((b) =>
-    incomeCategories.includes(b.category as any),
-  );
-  const expenseBudgets = budgets.filter((b) =>
-    expenseCategories.includes(b.category as any),
-  );
-
-  useEffect(() => {
-    setDrafts(
-      Object.fromEntries(budgets.map((b) => [b.category, String(b.budget)])),
-    );
-  }, [budgets]);
-
-  function handleChangeBudget(category: string, value: string) {
-    setDrafts((current) => ({ ...current, [category]: value }));
-  }
-
-  async function handleConfirmBudget() {
-    const applyFollowing = await requestConfirm({
-      title: "以降の月にも反映しますか？",
-      message: `${getMonthLabel(month)}以降の予算にも同じ変更を反映します。`,
-      confirmLabel: "以降にも反映",
-      cancelLabel: "この月のみ",
-    });
-    const targetMonths = applyFollowing
-      ? getMonthsFromSelectedForward(month)
-      : [month];
-    const nextBudgets = budgets.map((b) => ({
-      ...b,
-      budget: Number(toDigits(drafts[b.category] || "0")),
-    }));
-
-    try {
-      setSaving(true);
-      await Promise.all(
-        targetMonths.map((targetMonth) =>
-          saveBudgets(
-            targetMonth,
-            nextBudgets.map((budget) => ({ ...budget, month: targetMonth })),
-          ),
-        ),
-      );
-      setMessage(
-        applyFollowing
-          ? `${getMonthLabel(month)}以降の予算を確定しました`
-          : `${getMonthLabel(month)}の予算を確定しました`,
-      );
-      await onSaved();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "予算保存に失敗しました");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-[#e6dcc8] bg-white p-4 shadow-sm sm:p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <WalletCards size={18} className="shrink-0 text-[#8a6a3f]" />
-            <h2 className="truncate text-lg font-black text-[#24190f]">月別予算</h2>
-          </div>
-          <button
-            type="button"
-            onClick={handleConfirmBudget}
-            disabled={saving}
-            className="shrink-0 rounded-xl bg-[#5b4630] px-3 py-2 text-xs font-black text-white shadow-sm disabled:opacity-50 sm:px-4 sm:text-sm"
-          >
-            {saving ? "確定中..." : "予算を確定"}
-          </button>
-        </div>
-        <BudgetGroup
-          title="収入"
-          rows={incomeBudgets}
-          drafts={drafts}
-          onChangeBudget={handleChangeBudget}
-        />
-        <BudgetGroup
-          title="支出"
-          rows={expenseBudgets}
-          drafts={drafts}
-          onChangeBudget={handleChangeBudget}
-        />
-      </div>
-    </div>
-  );
-}
-
-function BudgetGroup({
-  title,
-  rows,
-  drafts,
-  onChangeBudget,
-}: {
-  title: string;
-  rows: HouseholdBudget[];
-  drafts: Record<string, string>;
-  onChangeBudget: (category: string, value: string) => void;
-}) {
-  const budgetOptions = Array.from({ length: 501 }, (_, index) => index * 1000);
-
-  return (
-    <section className="mb-4 last:mb-0">
-      <h3 className="mb-2 text-sm font-black text-[#5b4630]">{title}</h3>
-      <div className="space-y-2">
-        {rows.map((budget) => (
-          <label
-            key={budget.category}
-            className="grid grid-cols-1 items-center gap-2 rounded-lg border border-[#f0e7d8] bg-[#fbfaf7] px-3 py-2 min-[380px]:grid-cols-[minmax(0,1fr)_118px] sm:grid-cols-[minmax(0,1fr)_140px]"
-          >
-            <span className="text-sm font-bold text-[#24190f]">
-              {budget.category}
-            </span>
-            <select
-              value={toDigits(drafts[budget.category] ?? "0")}
-              onChange={(e) => onChangeBudget(budget.category, e.target.value)}
-              className="h-10 rounded-md border border-[#d7c7aa] bg-white px-2 text-right text-sm font-bold text-[#24190f]"
-            >
-              {budgetOptions.map((value) => (
-                <option key={value} value={String(value)}>
-                  {yen(value)}
-                </option>
-              ))}
-            </select>
-          </label>
-        ))}
-      </div>
-    </section>
   );
 }
