@@ -149,6 +149,30 @@ export default function HistoryTab({ overviews }: { overviews: MonthOverview[] }
 }
 
 
+function MiniStat({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: number;
+  tone?: "default" | "green" | "red";
+}) {
+  const toneClass =
+    tone === "green"
+      ? "text-[#047857]"
+      : tone === "red"
+        ? "text-[#b42318]"
+        : "text-[#24190f]";
+
+  return (
+    <div className="rounded-lg border border-[#f0e7d8] bg-white p-2">
+      <p className="text-[10px] font-black text-[#8a7a68]">{label}</p>
+      <p className={`mt-1 text-sm font-black ${toneClass}`}>{yen(value)}</p>
+    </div>
+  );
+}
+
 function HistoryCategorySection({
   title,
   rows,
