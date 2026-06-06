@@ -4,16 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BarChart3,
   CalendarDays,
-  Home,
   ListChecks,
-  LogOut,
   Pencil,
   Plus,
   Trash2,
-  UserRound,
   WalletCards,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import {
   expenseCategories,
   incomeCategories,
@@ -42,8 +38,13 @@ import type {
   TransactionType,
 } from "@/types/household";
 import LoginGate from "@/components/LoginGate";
-
-type AppTab = "home" | "input" | "budget" | "history" | "profile";
+import ConfirmDialog from "@/components/household/ConfirmDialog";
+import DateNavigator from "@/components/household/DateNavigator";
+import MonthHeader from "@/components/household/MonthHeader";
+import ProfileTab from "@/components/household/ProfileTab";
+import TabNav from "@/components/household/TabNav";
+import type { AppTab } from "@/components/household/types";
+import type { ConfirmDialogState, ConfirmFn, ConfirmOptions } from "@/components/household/ConfirmDialog";
 
 type TemplateDraft = {
   id: string;
@@ -71,19 +72,6 @@ type MonthOverview = {
   balance: number;
   categoryRows: CategoryOverview[];
 };
-
-type ConfirmOptions = {
-  title: string;
-  message?: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
-};
-
-type ConfirmDialogState = (ConfirmOptions & {
-  onResolve: (confirmed: boolean) => void;
-}) | null;
-
-type ConfirmFn = (options: ConfirmOptions) => Promise<boolean>;
 
 const TEMPLATE_STORAGE_KEY = "household.recurringTemplates.v2";
 const LEGACY_TEMPLATE_STORAGE_KEY = "household.recurringTemplates.v1";
@@ -116,14 +104,6 @@ const frequentSubcategories: Record<TransactionType, string[]> = {
   ],
   income: ["給与", "副収入", "立替返金", "取崩し"],
 };
-
-const tabs: Array<{ key: AppTab; label: string; icon: LucideIcon }> = [
-  { key: "home", label: "ホーム", icon: Home },
-  { key: "input", label: "入力", icon: Plus },
-  { key: "budget", label: "予算", icon: WalletCards },
-  { key: "history", label: "履歴", icon: CalendarDays },
-  { key: "profile", label: "プロフィール", icon: UserRound },
-];
 
 function formatNumber(value: number | string) {
   const digits = String(value).replace(/[^0-9]/g, "");
@@ -226,18 +206,6 @@ function formatLocalDate(date: Date) {
 
 function formatLocalMonth(date: Date) {
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
-}
-
-function shiftMonth(month: string, offset: number) {
-  const [year, m] = month.split("-").map(Number);
-  const date = new Date(year, m - 1 + offset, 1);
-  return formatLocalMonth(date);
-}
-
-function shiftDate(date: string, offset: number) {
-  const [year, month, day] = date.split("-").map(Number);
-  const next = new Date(year, month - 1, day + offset);
-  return formatLocalDate(next);
 }
 
 function getMonthsFromJan2026() {
@@ -560,180 +528,6 @@ export default function Page() {
         )}
       </main>
     </LoginGate>
-  );
-}
-
-function ConfirmDialog({
-  title,
-  message,
-  confirmLabel = "OK",
-  cancelLabel = "キャンセル",
-  onConfirm,
-  onCancel,
-}: ConfirmOptions & {
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/30 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-[24px] border border-[#e6dcc8] bg-white p-5 shadow-xl">
-        <h2 className="text-lg font-black text-[#24190f]">{title}</h2>
-        {message && (
-          <p className="mt-2 text-sm font-bold leading-relaxed text-[#6b7280]">
-            {message}
-          </p>
-        )}
-        <div className="mt-5 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-xl border border-[#d7c7aa] bg-white px-4 py-3 text-sm font-black text-[#5b4630] active:bg-[#f3eadb]"
-          >
-            {cancelLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="rounded-xl bg-[#5b4630] px-4 py-3 text-sm font-black text-white active:scale-[0.99]"
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MonthHeader({
-  month,
-  setMonth,
-}: {
-  month: string;
-  setMonth: React.Dispatch<React.SetStateAction<string>>;
-}) {
-  return (
-    <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2">
-      <button type="button" onClick={() => setMonth((current) => shiftMonth(current, -1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="前の月">‹</button>
-      <input
-        type="month"
-        value={month}
-        onChange={(e) => setMonth(e.target.value)}
-        onDoubleClick={() => setMonth(currentMonthString())}
-        onTouchEnd={(e) => {
-          e.stopPropagation();
-          const now = Date.now();
-          const last = Number(e.currentTarget.dataset.lastTap || 0);
-          e.currentTarget.dataset.lastTap = String(now);
-          if (now - last < 320) setMonth(currentMonthString());
-        }}
-        className="h-11 min-w-0 rounded-xl border border-[#d7c7aa] bg-white px-3 text-center text-lg font-black text-[#24190f] outline-none active:bg-[#f3eadb]"
-        aria-label="月を選択"
-      />
-      <button type="button" onClick={() => setMonth((current) => shiftMonth(current, 1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="次の月">›</button>
-    </div>
-  );
-}
-
-function DateNavigator({
-  date,
-  setDate,
-}: {
-  date: string;
-  setDate: React.Dispatch<React.SetStateAction<string>>;
-}) {
-  return (
-    <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2">
-      <button type="button" onTouchEnd={(e) => e.stopPropagation()} onClick={() => setDate((current) => shiftDate(current, -1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="前の日">‹</button>
-      <input
-        type="date"
-        value={date}
-        onChange={(e) => setDate(e.target.value)}
-        onDoubleClick={() => setDate(todayString())}
-        onTouchEnd={(e) => {
-          e.stopPropagation();
-          const now = Date.now();
-          const last = Number(e.currentTarget.dataset.lastTap || 0);
-          e.currentTarget.dataset.lastTap = String(now);
-          if (now - last < 320) setDate(todayString());
-        }}
-        className="h-11 min-w-0 rounded-xl border border-[#d7c7aa] bg-white px-3 text-center text-sm font-black text-[#24190f] outline-none active:bg-[#f3eadb]"
-        aria-label="日付を選択"
-      />
-      <button type="button" onTouchEnd={(e) => e.stopPropagation()} onClick={() => setDate((current) => shiftDate(current, 1))} className="h-11 rounded-xl border border-[#d7c7aa] bg-white text-lg font-black text-[#5b4630] active:bg-[#f3eadb]" aria-label="次の日">›</button>
-    </div>
-  );
-}
-
-function TabNav({
-  activeTab,
-  onChange,
-}: {
-  activeTab: AppTab;
-  onChange: (tab: AppTab) => void;
-}) {
-  return (
-    <nav className="fixed bottom-3 left-3 right-3 z-50 mx-auto grid max-w-md grid-cols-5 gap-1 rounded-2xl border border-[#e6dcc8] bg-white/95 p-1 shadow-lg backdrop-blur lg:bottom-6">
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        const active = activeTab === tab.key;
-        return (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => onChange(tab.key)}
-            className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[11px] font-black sm:text-xs ${
-              active
-                ? "bg-[#5b4630] text-white"
-                : "text-[#6b7280] active:bg-[#f3eadb]"
-            }`}
-          >
-            <Icon size={16} />
-            {tab.label}
-          </button>
-        );
-      })}
-    </nav>
-  );
-}
-
-
-function ProfileTab() {
-  const [activeId, setActiveId] = useState("");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    setActiveId(window.localStorage.getItem("household.auth.id") || window.localStorage.getItem("household.auth.email") || "");
-  }, []);
-
-  function handleLogout() {
-    if (typeof window === "undefined") return;
-    window.localStorage.removeItem("household.auth.userKey");
-    window.localStorage.removeItem("household.auth.id");
-    window.localStorage.removeItem("household.auth.email");
-    window.location.reload();
-  }
-
-  return (
-    <section className="rounded-[28px] border border-[#e6dcc8] bg-white p-4 shadow-sm sm:p-5">
-      <div className="mb-5 flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f3eadb] text-[#5b4630]">
-          <UserRound size={22} />
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs font-black text-[#8a7b68]">ログイン中</p>
-          <p className="truncate text-xl font-black text-[#24190f]">{activeId || "未設定"}</p>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={handleLogout}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#5b4630] text-sm font-black text-white shadow-sm active:scale-[0.99]"
-      >
-        <LogOut size={17} />
-        ログアウト
-      </button>
-    </section>
   );
 }
 
