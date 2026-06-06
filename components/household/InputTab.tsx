@@ -50,6 +50,30 @@ function toDigits(value: string) {
   return value.replace(/[^0-9]/g, "");
 }
 
+function MiniStat({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: number;
+  tone?: "default" | "green" | "red";
+}) {
+  const toneClass =
+    tone === "green"
+      ? "text-[#047857]"
+      : tone === "red"
+        ? "text-[#b42318]"
+        : "text-[#24190f]";
+
+  return (
+    <div className="rounded-xl border border-[#eadfce] bg-[#fbfaf7] p-3">
+      <p className="text-[11px] font-bold text-[#7a6a58]">{label}</p>
+      <p className={`mt-1 text-base font-black ${toneClass}`}>{yen(value)}</p>
+    </div>
+  );
+}
+
 function readQuickSubcategories(): Record<TransactionType, string[]> {
   if (typeof window === "undefined") return frequentSubcategories;
   try {
