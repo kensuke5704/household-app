@@ -302,7 +302,7 @@ function getTemplateTransactions(
 }
 
 export default function Page() {
-  const [activeTab, setActiveTab] = useState<AppTab>("home");
+  const [activeTab, setActiveTab] = useState<AppTab>("input");
   const [month, setMonth] = useState(currentMonthString());
   const [transactions, setTransactions] = useState<HouseholdTransaction[]>([]);
   const [budgets, setBudgets] = useState<HouseholdBudget[]>([]);
