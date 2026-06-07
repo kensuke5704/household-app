@@ -58,11 +58,6 @@ textarea {
 }
 
 
-
-.mobile-section-nav a:active {
-  background: #f3eadb;
-}
-
 @media (max-width: 1023px) {
   main,
   main > div,
@@ -155,7 +150,6 @@ textarea {
     appearance: none;
   }
 
-  
 
   .table-wrap {
     width: 100% !important;
