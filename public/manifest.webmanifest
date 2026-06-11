@@ -2,15 +2,15 @@
   "name": "Household Book",
   "short_name": "Household",
   "description": "月別収支・予算・履歴を管理する家計簿アプリ",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#f7f3eb",
   "theme_color": "#6b4f2a",
   "icons": [
     {
-      "src": "/icons/icon.png",
+      "src": "./icons/icon.png",
       "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any maskable"

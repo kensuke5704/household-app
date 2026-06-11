@@ -10,8 +10,9 @@ export default function PwaRegister() {
     if (typeof window === "undefined") return;
 
     if ("serviceWorker" in navigator) {
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("/sw.js").catch(() => {
+        navigator.serviceWorker.register(`${basePath}/sw.js`, { scope: `${basePath}/` }).catch(() => {
           // PWA registration failed. The app still works normally online.
         });
       });

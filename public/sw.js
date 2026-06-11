@@ -1,5 +1,7 @@
-const CACHE_NAME = "household-pwa-v1";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/icons/icon.svg"];
+const CACHE_NAME = "household-pwa-v2";
+const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
+const path = (value) => `${BASE_PATH}${value}`;
+const APP_SHELL = [path("/"), path("/manifest.webmanifest"), path("/icons/icon.svg")];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
@@ -25,6 +27,6 @@ self.addEventListener("fetch", (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
         return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/")))
+      .catch(() => caches.match(event.request).then((cached) => cached || caches.match(path("/"))))
   );
 });

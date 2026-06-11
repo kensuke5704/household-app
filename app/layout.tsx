@@ -27,10 +27,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Household App",
   description: "Household management app",
-  manifest: "/manifest.webmanifest",
+  manifest: `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/manifest.webmanifest`,
   icons: {
-    icon: "/icons/icon.png",
-    apple: "/icons/icon.png",
+    icon: `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/icons/icon.png`,
+    apple: `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/icons/icon.png`,
   },
   appleWebApp: {
     capable: true,

@@ -1,5 +1,6 @@
 import { LogOut, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
+import BackupControls from "@/components/BackupControls";
 
 export default function ProfileTab() {
   const [activeId, setActiveId] = useState("");
@@ -27,6 +28,14 @@ export default function ProfileTab() {
           <p className="text-xs font-black text-[#8a7b68]">ログイン中</p>
           <p className="truncate text-xl font-black text-[#24190f]">{activeId || "未設定"}</p>
         </div>
+      </div>
+
+      <div className="mb-5 rounded-[22px] bg-[#f7f3eb] p-4">
+        <p className="mb-1 text-sm font-black text-[#24190f]">データの引き継ぎ</p>
+        <p className="mb-4 text-xs font-bold leading-relaxed text-[#8a7b68]">
+          機種変更前に書き出し、ファイルをiCloud DriveやGoogle Driveなどへ保管してください。
+        </p>
+        <BackupControls />
       </div>
 
       <button

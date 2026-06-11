@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { isSupabaseEnabled, supabase } from "@/lib/supabase";
+import BackupControls from "@/components/BackupControls";
 
 const ACTIVE_USER_KEY = "household.auth.userKey";
 const ACTIVE_ID_KEY = "household.auth.id";
@@ -48,29 +48,6 @@ function setActiveUser(userKey: string, id: string) {
   window.localStorage.setItem(LEGACY_ACTIVE_ID_KEY, id);
 }
 
-async function findRemoteUser(id: string) {
-  if (!isSupabaseEnabled || !supabase) return null;
-  const { data, error } = await supabase
-    .from("household_users")
-    .select("id,user_key")
-    .eq("id", id)
-    .maybeSingle();
-  if (error) throw error;
-  return data as { id: string; user_key: string } | null;
-}
-
-async function createRemoteUser(id: string) {
-  if (!isSupabaseEnabled || !supabase) return null;
-  const userKey = makeUserKey(id);
-  const { data, error } = await supabase
-    .from("household_users")
-    .insert({ id, user_key: userKey })
-    .select("id,user_key")
-    .single();
-  if (error) throw error;
-  return data as { id: string; user_key: string };
-}
-
 export default function LoginGate({ children }: { children: ReactNode }) {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [mode, setMode] = useState<Mode>("login");
@@ -102,51 +79,29 @@ export default function LoginGate({ children }: { children: ReactNode }) {
     setLoading(true);
 
     try {
-      if (isSupabaseEnabled && supabase) {
-        const existing = await findRemoteUser(normalizedId);
+      const users = readLocalUsers();
+      const existing = users.find((user) => user.id === normalizedId);
 
-        if (mode === "signup") {
-          if (existing) {
-            setError("このIDは登録済みです");
-            return;
-          }
-          const created = await createRemoteUser(normalizedId);
-          if (!created) throw new Error("登録に失敗しました");
-          setActiveUser(created.user_key, created.id);
-          setActiveId(created.id);
-        } else {
-          if (!existing) {
-            setError("このIDは登録されていません");
-            return;
-          }
-          setActiveUser(existing.user_key, existing.id);
-          setActiveId(existing.id);
+      if (mode === "signup") {
+        if (existing) {
+          setError("このIDは登録済みです");
+          return;
         }
+        const user: LocalUser = {
+          id: normalizedId,
+          userKey: makeUserKey(normalizedId),
+          createdAt: new Date().toISOString(),
+        };
+        writeLocalUsers([...users, user]);
+        setActiveUser(user.userKey, user.id);
+        setActiveId(user.id);
       } else {
-        const users = readLocalUsers();
-        const existing = users.find((user) => user.id === normalizedId);
-
-        if (mode === "signup") {
-          if (existing) {
-            setError("このIDは登録済みです");
-            return;
-          }
-          const user: LocalUser = {
-            id: normalizedId,
-            userKey: makeUserKey(normalizedId),
-            createdAt: new Date().toISOString(),
-          };
-          writeLocalUsers([...users, user]);
-          setActiveUser(user.userKey, user.id);
-          setActiveId(user.id);
-        } else {
-          if (!existing) {
-            setError("このIDは登録されていません");
-            return;
-          }
-          setActiveUser(existing.userKey, existing.id);
-          setActiveId(existing.id);
+        if (!existing) {
+          setError("この端末にIDがありません。機種変更時は下のバックアップから復元してください");
+          return;
         }
+        setActiveUser(existing.userKey, existing.id);
+        setActiveId(existing.id);
       }
 
       setIsUnlocked(true);
@@ -242,6 +197,16 @@ export default function LoginGate({ children }: { children: ReactNode }) {
               {loading ? "処理中..." : isLogin ? "ログイン" : "登録"}
             </button>
           </form>
+
+          <div className="my-5 flex items-center gap-3 text-xs font-bold text-[#a09382]">
+            <span className="h-px flex-1 bg-[#e6dcc8]" />
+            機種変更・別端末
+            <span className="h-px flex-1 bg-[#e6dcc8]" />
+          </div>
+          <BackupControls allowExport={false} />
+          <p className="mt-3 text-center text-xs font-bold leading-relaxed text-[#8a7b68]">
+            以前の端末で書き出したJSONファイルを選びます
+          </p>
         </section>
       </div>
     </main>
