@@ -18,7 +18,6 @@ function scopedLocalKey(key: string) {
   return `${key}.${getUserKey()}`;
 }
 
-
 function makeId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -38,6 +37,7 @@ function readLocal<T>(key: string, fallback: T): T {
 function writeLocal<T>(key: string, value: T) {
   if (typeof window === "undefined") return;
   localStorage.setItem(scopedLocalKey(key), JSON.stringify(value));
+  window.dispatchEvent(new Event("household-data-changed"));
 }
 
 export async function seedInitialHouseholdData() {
