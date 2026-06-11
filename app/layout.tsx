@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import PwaRegister from "@/components/PwaRegister";
+import AutoBackupManager from "@/components/AutoBackupManager";
 
 export default function RootLayout({
   children,
@@ -11,6 +12,7 @@ export default function RootLayout({
     <html lang="ja">
       <body>
         {children}
+        <AutoBackupManager />
         <PwaRegister />
       </body>
     </html>
