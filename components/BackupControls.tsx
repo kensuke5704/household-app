@@ -1,8 +1,8 @@
 "use client";
 
-import { Download, Upload } from "lucide-react";
+import { CloudUpload, Download, Upload } from "lucide-react";
 import { useRef, useState } from "react";
-import { downloadBackup, restoreBackup } from "@/lib/backup";
+import { downloadBackup, restoreBackup, shareBackup } from "@/lib/backup";
 
 export default function BackupControls({ allowExport = true }: { allowExport?: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -17,6 +17,18 @@ export default function BackupControls({ allowExport = true }: { allowExport?: b
     } catch (error) {
       setIsError(true);
       setMessage(error instanceof Error ? error.message : "書き出しに失敗しました");
+    }
+  }
+
+  async function handleCloudExport() {
+    try {
+      const shared = await shareBackup();
+      setIsError(false);
+      setMessage(shared ? "共有画面で「ファイルに保存」を選んでください" : "バックアップを書き出しました");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setIsError(true);
+      setMessage(error instanceof Error ? error.message : "iCloud用の書き出しに失敗しました");
     }
   }
 
@@ -46,19 +58,31 @@ export default function BackupControls({ allowExport = true }: { allowExport?: b
       />
       <div className={`grid gap-3 ${allowExport ? "grid-cols-2" : "grid-cols-1"}`}>
         {allowExport && (
-          <button
-            type="button"
-            onClick={handleExport}
-            className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-[#d7c7aa] bg-white text-sm font-black text-[#5b4630] active:scale-[0.99]"
-          >
-            <Download size={17} />
-            書き出す
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => void handleCloudExport()}
+              className="col-span-2 flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#5b4630] text-sm font-black text-white shadow-sm active:scale-[0.99]"
+            >
+              <CloudUpload size={17} />
+              iCloudへ保存
+            </button>
+            <button
+              type="button"
+              onClick={handleExport}
+              className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-[#d7c7aa] bg-white text-sm font-black text-[#5b4630] active:scale-[0.99]"
+            >
+              <Download size={17} />
+              書き出す
+            </button>
+          </>
         )}
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#5b4630] text-sm font-black text-white shadow-sm active:scale-[0.99]"
+          className={`flex h-12 items-center justify-center gap-2 rounded-2xl text-sm font-black shadow-sm active:scale-[0.99] ${
+            allowExport ? "border border-[#d7c7aa] bg-white text-[#5b4630]" : "bg-[#5b4630] text-white"
+          }`}
         >
           <Upload size={17} />
           復元する
