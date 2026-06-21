@@ -9,13 +9,50 @@ export default function PwaRegister() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+    const reloadKey = "household-pwa-reloaded-v3";
+    let cleanupServiceWorker = () => {};
+
     if ("serviceWorker" in navigator) {
-      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register(`${basePath}/sw.js`, { scope: `${basePath}/` }).catch(() => {
+      const registerServiceWorker = async () => {
+        try {
+          const registration = await navigator.serviceWorker.register(
+            `${basePath}/sw.js?v=3`,
+            {
+              scope: `${basePath}/`,
+              updateViaCache: "none",
+            },
+          );
+          await registration.update();
+        } catch {
           // PWA registration failed. The app still works normally online.
-        });
-      });
+        }
+      };
+
+      const onControllerChange = () => {
+        if (sessionStorage.getItem(reloadKey) === "true") return;
+        sessionStorage.setItem(reloadKey, "true");
+        window.location.reload();
+      };
+
+      navigator.serviceWorker.addEventListener(
+        "controllerchange",
+        onControllerChange,
+      );
+
+      if (document.readyState === "complete") {
+        void registerServiceWorker();
+      } else {
+        window.addEventListener("load", registerServiceWorker, { once: true });
+      }
+
+      cleanupServiceWorker = () => {
+        window.removeEventListener("load", registerServiceWorker);
+        navigator.serviceWorker.removeEventListener(
+          "controllerchange",
+          onControllerChange,
+        );
+      };
     }
 
     const onBeforeInstallPrompt = (event: Event) => {
@@ -34,6 +71,7 @@ export default function PwaRegister() {
     window.addEventListener("appinstalled", onInstalled);
 
     return () => {
+      cleanupServiceWorker();
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
       window.removeEventListener("appinstalled", onInstalled);
     };

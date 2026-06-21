@@ -1,4 +1,4 @@
-const CACHE_NAME = "household-pwa-v2";
+const CACHE_NAME = "household-pwa-v3";
 const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
 const path = (value) => `${BASE_PATH}${value}`;
 const APP_SHELL = [path("/"), path("/manifest.webmanifest"), path("/icons/icon.svg")];
@@ -21,10 +21,12 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: "no-store" })
       .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
         return response;
       })
       .catch(() => caches.match(event.request).then((cached) => cached || caches.match(path("/"))))
