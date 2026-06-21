@@ -125,6 +125,64 @@ export async function saveBudgets(month: string, budgets: HouseholdBudget[]) {
   writeLocal(STORAGE_BUDGETS, [...otherMonths, ...budgets.map((b) => ({ ...b, month }))]);
 }
 
+export async function saveBudget(
+  month: string,
+  category: string,
+  budget: number,
+) {
+  const rows = readLocal<HouseholdBudget[]>(STORAGE_BUDGETS, []);
+  const index = rows.findIndex(
+    (row) => row.month === month && row.category === category,
+  );
+
+  if (index === -1) {
+    writeLocal(STORAGE_BUDGETS, [...rows, { month, category, budget }]);
+    return;
+  }
+
+  const nextRows = rows.slice();
+  nextRows[index] = { ...nextRows[index], budget };
+  writeLocal(STORAGE_BUDGETS, nextRows);
+}
+
+export async function saveBudgetFromMonth(
+  selectedMonth: string,
+  category: string,
+  budget: number,
+  count = 120,
+) {
+  const [startYear, startMonth] = selectedMonth.split("-").map(Number);
+  const targetMonths: string[] = [];
+
+  for (let offset = 0; offset < count; offset += 1) {
+    const date = new Date(startYear, startMonth - 1 + offset, 1);
+    targetMonths.push(
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
+    );
+  }
+
+  const targetMonthSet = new Set(targetMonths);
+  const savedMonths = new Set<string>();
+  const nextRows = readLocal<HouseholdBudget[]>(STORAGE_BUDGETS, []).map(
+    (row) => {
+      if (row.category !== category || !targetMonthSet.has(row.month)) {
+        return row;
+      }
+
+      savedMonths.add(row.month);
+      return { ...row, budget };
+    },
+  );
+
+  for (const month of targetMonths) {
+    if (!savedMonths.has(month)) {
+      nextRows.push({ month, category, budget });
+    }
+  }
+
+  writeLocal(STORAGE_BUDGETS, nextRows);
+}
+
 function mergeDefaultBudgets(month: string, saved: HouseholdBudget[]) {
   const byCategory = new Map(saved.map((b) => [b.category, b]));
   return Object.entries(defaultBudgets).map(([category, budget]) => ({

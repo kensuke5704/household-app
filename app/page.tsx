@@ -321,9 +321,10 @@ export default function Page() {
   }, [templatesEnabled]);
 
   useEffect(() => {
+    if (activeTab !== "history") return;
     void loadMonthOverviews();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [month, transactions, budgets]);
+  }, [activeTab, month, transactions, budgets]);
 
   function requestConfirm(options: ConfirmOptions) {
     return new Promise<boolean>((resolve) => {
@@ -437,7 +438,7 @@ export default function Page() {
                   <BudgetPanel
                     month={month}
                     budgets={budgets}
-                    onSaved={refreshWithoutJump}
+                    onSaved={setBudgets}
                     setMessage={setMessage}
                     requestConfirm={requestConfirm}
                   />
